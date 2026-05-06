@@ -17,13 +17,14 @@
 param(
     [string]$Model = "",
     [string]$ModelRepo = "",
-    [ValidateSet('','coding','general','reasoning','cyber-offense','cyber-defense','newest','popular','downloaded','speed','smartness')]
+    [ValidateSet('','coding','general','reasoning','cyber-offense','cyber-defense','newest','popular','downloaded','speed','smartness','context')]
     [string]$Sort = "",
     [switch]$Pick,
     [switch]$DownloadOnly,
     [switch]$OnlyLlama,
     [switch]$Force,
-    [switch]$Benchmark
+    [switch]$Benchmark,
+    [switch]$LocalOnly  # default is LAN-accessible (0.0.0.0); pass -LocalOnly to bind 127.0.0.1 only
 )
 
 # ---------- Catalog: loaded from catalog.json (ships in repo) ----------
@@ -228,6 +229,11 @@ function Sort-CatalogEntries($entries, $sortKey, $ramGiBVal = 0, $vramGiBVal = 0
                 Get-TokSecEstimate $_ $ramGiBVal $vramGiBVal
             }}
         }
+        'context'       {
+            return $entries | Sort-Object -Descending -Property @{Expression={
+                if ($null -ne $_.contextWindow) { [long]$_.contextWindow } else { -1 }
+            }}
+        }
         'newest'        {
             return $entries | Sort-Object -Descending -Property @{Expression={
                 if ($_.releaseDate) { [DateTime]::Parse($_.releaseDate) } else { [DateTime]::MinValue }
@@ -304,6 +310,15 @@ function Format-Wrapped($text, $width = 72, $indent = "              ") {
     return $lines
 }
 
+# Format a context window in tokens as "32K", "128K", "262K", etc.
+function Format-Context($ctx) {
+    if ($null -eq $ctx) { return "ctx ?" }
+    $n = [long]$ctx
+    if ($n -ge 1000000) { return ("ctx {0:N1}M" -f ($n / 1000000.0)) }
+    if ($n -ge 1024)    { return ("ctx {0}K" -f [int][Math]::Round($n / 1024.0)) }
+    return "ctx $n"
+}
+
 # Pretty-print one entry block.
 function Show-Entry($rank, $m, $ramGiBVal, $vramGiBVal, $primaryKey, $isTop) {
     $s         = Get-ModelScore     $m $ramGiBVal
@@ -316,11 +331,12 @@ function Show-Entry($rank, $m, $ramGiBVal, $vramGiBVal, $primaryKey, $isTop) {
     $fitWord   = switch ($s.Tag) { 'ok' { 'fits cleanly' } 'tight' { 'tight, NVMe streaming' } default { 'needs more RAM' } }
     $rankBadge = if ($isTop) { ("#{0}  ★ best in {1}" -f $rank, $catLabel) } else { ("#{0}" -f $rank) }
     $smartTxt  = if ($smart -ne $null) { ("smartness {0}/100" -f $smart) } else { "smartness n/a" }
+    $ctxTxt    = Format-Context $m.contextWindow
 
     Write-Host ""
     Write-Host ("  {0}" -f $rankBadge) -ForegroundColor Yellow
     Write-Host ("       {0,-50}  [{1}]" -f $m.name, $catLabel)
-    Write-Host ("       {0}  ~{1} t/s  -  {2}  -  released {3}" -f $s.Marker, $tps, $fitWord, $ageTxt) -ForegroundColor $s.Color
+    Write-Host ("       {0}  ~{1} t/s  -  {2}  -  {3}  -  released {4}" -f $s.Marker, $tps, $fitWord, $ctxTxt, $ageTxt) -ForegroundColor $s.Color
     if ($bench) {
         Write-Host ("       {0}    {1}" -f $bench, $smartTxt) -ForegroundColor DarkCyan
     }
@@ -403,23 +419,25 @@ function Select-Sort($category) {
     Write-Host ("  [1] smartest in {0,-15} ({1}, default)" -f $category, $bench)
     Write-Host  "  [2] fastest on this machine    (estimated tok/s, descending)"
     Write-Host  "  [3] smartest overall           (composite of MMLU-Pro + LCB + GPQA)"
-    Write-Host  "  [4] newest first"
-    Write-Host  "  [5] most popular               (HF likes - refresh-catalog.py first)"
-    Write-Host  "  [6] most downloaded            (HF downloads - refresh-catalog.py first)"
-    Write-Host  "  [7] back"
+    Write-Host  "  [4] biggest context window     (longest native context, descending)"
+    Write-Host  "  [5] newest first"
+    Write-Host  "  [6] most popular               (HF likes - refresh-catalog.py first)"
+    Write-Host  "  [7] most downloaded            (HF downloads - refresh-catalog.py first)"
+    Write-Host  "  [8] back"
     while ($true) {
-        $sel = Read-Host "Pick (1-7)"
-        if ($sel -eq '7' -or $sel -eq 'b' -or $sel -eq 'B') { return $null }
+        $sel = Read-Host "Pick (1-8)"
+        if ($sel -eq '8' -or $sel -eq 'b' -or $sel -eq 'B') { return $null }
         switch ($sel) {
             '1' { return $category }
             ''  { return $category }
             '2' { return 'speed' }
             '3' { return 'smartness' }
-            '4' { return 'newest' }
-            '5' { return 'popular' }
-            '6' { return 'downloaded' }
+            '4' { return 'context' }
+            '5' { return 'newest' }
+            '6' { return 'popular' }
+            '7' { return 'downloaded' }
         }
-        Write-Host "Invalid. 1-7." -ForegroundColor Yellow
+        Write-Host "Invalid. 1-8." -ForegroundColor Yellow
     }
 }
 
@@ -459,6 +477,7 @@ function Select-Model($ramGiBVal, $vramGiBVal, $preselectedSort = "") {
     $sortLabel = switch ($effectiveSort) {
         'speed'      { 'fastest on this machine (estimated tok/s)' }
         'smartness'  { 'smartness composite (MMLU + LCB + GPQA averaged)' }
+        'context'    { 'biggest context window (native max)' }
         'newest'     { 'newest first' }
         'popular'    { 'HuggingFace likes' }
         'downloaded' { 'HuggingFace downloads' }
@@ -469,6 +488,7 @@ function Select-Model($ramGiBVal, $vramGiBVal, $preselectedSort = "") {
     $primaryKey = switch ($effectiveSort) {
         'speed'      { '' }
         'smartness'  { '' }
+        'context'    { '' }
         'newest'     { '' }
         'popular'    { '' }
         'downloaded' { '' }
@@ -835,6 +855,23 @@ if ($Force) {
 # ---------- 5. Launch llama-server ----------
 Section "Launching"
 
+# LAN access is on by default - bind to 0.0.0.0 so other devices on your LAN
+# can reach http://<your-ip>:3000. Pass -LocalOnly to bind 127.0.0.1 only.
+# Trusted-network assumption: WEBUI_AUTH stays off, so anyone on the LAN gets in.
+$bindHost = if ($LocalOnly) { "127.0.0.1" } else { "0.0.0.0" }
+$lanIp = $null
+if (-not $LocalOnly) {
+    try {
+        $lanIp = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+                  Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -notmatch '^(127\.|169\.254\.)' } |
+                  Select-Object -First 1).IPAddress
+    } catch { }
+    if (-not $lanIp) { $lanIp = "<your-lan-ip>" }
+    Write-Host ("LAN access: binding to 0.0.0.0 - reachable at http://{0}:3000 from other devices on your LAN" -f $lanIp) -ForegroundColor Yellow
+    Write-Host "            Windows Firewall may prompt to allow llama-server / python.exe on 'Private' networks - click Allow." -ForegroundColor DarkGray
+    Write-Host "            Pass -LocalOnly to bind 127.0.0.1 instead." -ForegroundColor DarkGray
+}
+
 # If llama-server is already running, check whether it's serving the same model.
 # If different, restart it so the new model gets loaded — otherwise the user
 # would download a new GGUF only to keep chatting with the old one.
@@ -863,18 +900,18 @@ if (-not $llamaUp) {
         "--cache-type-v", $kvType,
         "-b", $b, "-ub", $ub,
         "--jinja",
-        "--host", "127.0.0.1", "--port", "8088"
+        "--host", $bindHost, "--port", "8088"
     )
     if ($useOtCpu) { $llamaArgs += @("--override-tensor", "exps=CPU") }
     if ($useMlock) { $llamaArgs += "--mlock" }
 
     Start-Process -FilePath $llama -ArgumentList $llamaArgs -WindowStyle Normal
-    Write-Host "llama-server -> http://127.0.0.1:8088"
+    Write-Host ("llama-server -> http://{0}:8088" -f $bindHost)
 }
 
 if ($OnlyLlama) {
     Write-Host ""
-    Write-Host "Done (OnlyLlama). API at http://127.0.0.1:8088/v1"
+    Write-Host ("Done (OnlyLlama). API at http://{0}:8088/v1" -f $bindHost)
     return
 }
 
@@ -891,10 +928,13 @@ if ($webuiUp) {
 `$env:OPENAI_API_KEY='sk-llama-cpp';
 `$env:ENABLE_OLLAMA_API='False';
 `$env:DATA_DIR='$dataDir';
-& '$webui' serve --port 3000 --host 127.0.0.1
+& '$webui' serve --port 3000 --host $bindHost
 "@
     Start-Process powershell -ArgumentList "-NoExit","-Command",$webuiCmd -WindowStyle Normal
-    Write-Host "Open WebUI    -> http://127.0.0.1:3000  (~30s to bind)"
+    Write-Host ("Open WebUI    -> http://{0}:3000  (~30s to bind)" -f $bindHost)
+    if ((-not $LocalOnly) -and $lanIp) {
+        Write-Host ("              LAN URL: http://{0}:3000" -f $lanIp) -ForegroundColor Green
+    }
 } else {
     Write-Host "Open WebUI not installed at $webui - skipping" -ForegroundColor Yellow
 }
@@ -944,8 +984,8 @@ if ($mcpoUp) {
     [System.IO.File]::WriteAllText($mcpoConfig, $json, [System.Text.UTF8Encoding]::new($false))
     if (-not (Test-Path $arxivStorage)) { New-Item -ItemType Directory -Path $arxivStorage -Force | Out-Null }
 
-    Start-Process -FilePath $mcpo -ArgumentList "--config",$mcpoConfig,"--port","8091","--host","127.0.0.1" -WindowStyle Normal
-    Write-Host "MCPO          -> http://127.0.0.1:8091  (free MCPs: fetch, ddg, wiki, arxiv, time, memory)"
+    Start-Process -FilePath $mcpo -ArgumentList "--config",$mcpoConfig,"--port","8091","--host",$bindHost -WindowStyle Normal
+    Write-Host ("MCPO          -> http://{0}:8091  (free MCPs: fetch, ddg, wiki, arxiv, time, memory)" -f $bindHost)
 } else {
     Write-Host "MCPO not installed - skipping" -ForegroundColor Yellow
 }
@@ -998,6 +1038,9 @@ if ($Benchmark) {
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "  CHAT IS HERE:  http://127.0.0.1:3000" -ForegroundColor Green
+if ($Lan -and $lanIp) {
+    Write-Host ("  LAN ACCESS:    http://{0}:3000  (other devices on your LAN)" -f $lanIp) -ForegroundColor Green
+}
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "  Open the URL above in your browser to start chatting." -ForegroundColor Cyan
 Write-Host "  (Open WebUI may take ~30 sec to bind on first launch.)" -ForegroundColor DarkGray
@@ -1008,7 +1051,8 @@ Write-Host "  Tools:  http://127.0.0.1:8091      (MCP-as-OpenAPI - fetch/search/
 Write-Host ""
 Write-Host "Useful commands:"
 Write-Host "  Switch model:    .\start.cmd -Pick"
-Write-Host "  Pick by use:     .\start.cmd -Pick -Sort coding   (or general/reasoning/cyber-offense/cyber-defense/newest/popular/downloaded)"
+Write-Host "  Pick by use:     .\start.cmd -Pick -Sort coding   (or general/reasoning/cyber-offense/cyber-defense/context/newest/popular/downloaded)"
 Write-Host "  Measure perf:    .\start.cmd -Benchmark"
 Write-Host "  Refresh stats:   python scripts\refresh-catalog.py   (HF likes/downloads, then re-run with -Sort popular)"
+Write-Host "  LAN-restrict:    .\start.cmd -LocalOnly   (bind 127.0.0.1 only; default is LAN-accessible)"
 Write-Host "  Stop all:        Get-Process llama-server,open-webui,mcpo | Stop-Process -Force"

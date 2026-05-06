@@ -39,6 +39,7 @@ FIELDS = [
     "good", "bad",
     "mmluPro", "liveCodeBench", "gpqaDiamond", "cyberMetric",
     "huggingfaceLikes", "huggingfaceDownloads",
+    "contextWindow",
 ]
 
 
@@ -47,7 +48,7 @@ def sort_key_value(entry: dict, key: str) -> tuple[int, float | str]:
     if key in {"liveCodeBench", "mmluPro", "gpqaDiamond", "cyberMetric"}:
         v = (entry.get("benchmarks") or {}).get(key)
         return (0, float(v)) if isinstance(v, (int, float)) else (0, -1.0)
-    if key in {"huggingfaceLikes", "huggingfaceDownloads"}:
+    if key in {"huggingfaceLikes", "huggingfaceDownloads", "contextWindow"}:
         v = entry.get(key)
         return (0, float(v)) if isinstance(v, (int, float)) else (0, -1.0)
     if key == "releaseDate":
@@ -86,6 +87,7 @@ def emit_line(entry: dict) -> str:
         normalize(bench.get("cyberMetric")),
         normalize(entry.get("huggingfaceLikes")),
         normalize(entry.get("huggingfaceDownloads")),
+        normalize(entry.get("contextWindow")),
     ]
     return "|".join(cells)
 

@@ -20,6 +20,7 @@ ONLY_LLAMA=0
 FORCE=0
 PICK=0
 BENCHMARK=0
+LOCAL_ONLY=0   # default is LAN-accessible (0.0.0.0); pass --local-only to bind 127.0.0.1
 SORT=""
 
 while [[ $# -gt 0 ]]; do
@@ -32,6 +33,8 @@ while [[ $# -gt 0 ]]; do
         --only-llama)    ONLY_LLAMA=1; shift ;;
         --force)         FORCE=1; shift ;;
         --benchmark)     BENCHMARK=1; shift ;;
+        --local-only)    LOCAL_ONLY=1; shift ;;
+        --lan)           shift ;;  # backwards compat: LAN is now the default; flag is a no-op
         -h|--help)
             grep '^#' "$0" | head -16 | sed 's/^# \{0,1\}//'
             exit 0 ;;
@@ -111,6 +114,7 @@ resolve_sort_for_helper() {
         newest)        echo "$category|releaseDate|newest first" ;;
         popular)       echo "$category|huggingfaceLikes|HuggingFace likes (run scripts/refresh-catalog.py first)" ;;
         downloaded)    echo "$category|huggingfaceDownloads|HuggingFace downloads (run scripts/refresh-catalog.py first)" ;;
+        context)       echo "$category|contextWindow|biggest context window (native max)" ;;
         coding)        echo "coding|liveCodeBench|LiveCodeBench (higher = better)" ;;
         general)       echo "general|mmluPro|MMLU-Pro (higher = better)" ;;
         reasoning)     echo "reasoning|gpqaDiamond|GPQA Diamond (higher = better)" ;;
@@ -142,6 +146,17 @@ compute_smartness() {
         if (c != "" && c + 0 == c) { sum += c; n++ }
         if (n == 0) { print ""; exit }
         printf "%d\n", int(sum/n + 0.5)
+    }'
+}
+
+# Humanize a context window in tokens to "32K" / "128K" / "1.0M".
+humanize_ctx() {
+    local n=$1
+    [[ -z "$n" ]] && { echo "?"; return; }
+    awk -v n="$n" 'BEGIN {
+        if (n+0 >= 1000000) printf "%.1fM\n", n/1000000
+        else if (n+0 >= 1024) printf "%dK\n", int(n/1024 + 0.5)
+        else printf "%d\n", n
     }'
 }
 
@@ -203,7 +218,7 @@ show_entries() {
     echo "  benchmarks are full-precision base; quants take a small hit (see quantPenalty)"
     echo "  '*' on a bench label = primary metric for the active sort"
     local i=0
-    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx; do
         [[ -z "$id" ]] && continue
         i=$((i+1))
         local marker; marker=$(mark_for_ram "$minRam" "$ramGiB")
@@ -211,6 +226,7 @@ show_entries() {
         local smart; smart=$(compute_smartness "$mmlu" "$lcb" "$gpqa")
         local age_days; age_days=$(days_since "$rdate")
         local age_txt; age_txt=$(humanize_age "$age_days")
+        local ctx_txt; ctx_txt=$(humanize_ctx "$ctx")
         local fit_word
         case "$marker" in
             "[ok]") fit_word="fits cleanly" ;;
@@ -239,7 +255,7 @@ show_entries() {
         echo
         printf "  %s\n" "$rank_badge"
         printf "       %s   [%s]\n" "$name" "$cat"
-        printf "       %s  ~%s t/s  -  %s  -  released %s\n" "$marker" "$tps" "$fit_word" "$age_txt"
+        printf "       %s  ~%s t/s  -  %s  -  ctx %s  -  released %s\n" "$marker" "$tps" "$fit_word" "$ctx_txt" "$age_txt"
         printf "       %s    %s\n" "$bench" "$smart_txt"
         if [[ -n "$good" ]]; then
             printf "       GOOD AT  "
@@ -291,21 +307,23 @@ select_from_catalog() {
         printf "  [1] smartest in %-15s (%s, default)\n" "$category" "$pb"
         echo "  [2] fastest on this machine    (estimated tok/s, descending)"
         echo "  [3] smartest overall           (composite of MMLU-Pro + LCB + GPQA)"
-        echo "  [4] newest first"
-        echo "  [5] most popular               (HF likes - refresh-catalog.py first)"
-        echo "  [6] most downloaded            (HF downloads - refresh-catalog.py first)"
-        echo "  [7] back"
+        echo "  [4] biggest context window     (longest native context, descending)"
+        echo "  [5] newest first"
+        echo "  [6] most popular               (HF likes - refresh-catalog.py first)"
+        echo "  [7] most downloaded            (HF downloads - refresh-catalog.py first)"
+        echo "  [8] back"
         while true; do
-            read -r -p "Pick (1-7): " s
+            read -r -p "Pick (1-8): " s
             case "$s" in
                 ""|1) sortVal="$category"; break ;;
                 2) sortVal="speed"; break ;;
                 3) sortVal="smartness"; break ;;
-                4) sortVal="newest"; break ;;
-                5) sortVal="popular"; break ;;
-                6) sortVal="downloaded"; break ;;
-                7|b|B) return 2 ;;
-                *) echo "Invalid. 1-7." ;;
+                4) sortVal="context"; break ;;
+                5) sortVal="newest"; break ;;
+                6) sortVal="popular"; break ;;
+                7) sortVal="downloaded"; break ;;
+                8|b|B) return 2 ;;
+                *) echo "Invalid. 1-8." ;;
             esac
         done
     fi
@@ -323,7 +341,7 @@ select_from_catalog() {
 
         local prefixed=()
         for line in "${raw[@]}"; do
-            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl <<< "$line"
+            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx <<< "$line"
             local key=0
             if [[ "$sortVal" == "speed" ]]; then
                 key=$(estimate_tok_sec "$sizeGiB" "$activeB" "$ramGiB" "$vramGiB")
@@ -354,7 +372,7 @@ select_from_catalog() {
             local field="$helperSort" probeArgs=("--catalog" "$CATALOG_JSON")
             [[ "$helperCat" != "all" ]] && probeArgs+=("--category" "$helperCat")
             local hasData=0
-            while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+            while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx; do
                 local val=""
                 [[ "$field" == "huggingfaceLikes" ]] && val="$hflikes"
                 [[ "$field" == "huggingfaceDownloads" ]] && val="$hfdl"
@@ -393,7 +411,7 @@ select_from_catalog() {
             return $?
         fi
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#entries[@]} )); then
-            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl <<< "${entries[$((sel-1))]}"
+            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx <<< "${entries[$((sel-1))]}"
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minRam"; SEL_ID="$id"
             return 0
@@ -406,7 +424,7 @@ select_from_catalog() {
 # Each line: file|gib|name|repo|pattern|minram|id
 list_local_models() {
     LOCAL_MODELS=()
-    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx; do
         [[ -z "$id" || -z "$file" ]] && continue
         local fullpath="$HERE/$file"
         # Sharded models live in a subdirectory; check if any matching files exist.
@@ -771,7 +789,7 @@ echo "=== Model ==="
 if [[ -n "$MODEL" ]]; then
     # 2a. --model passed explicitly: look up by id/file in catalog.json, fall back to custom
     found=0
-    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx; do
         if [[ "$file" == "$MODEL" || "$id" == "$MODEL" ]]; then
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minRam"; SEL_ID="$id"
@@ -888,6 +906,24 @@ mkdir -p "$TOOLS/logs"
 
 is_listening() { lsof -i :"$1" -sTCP:LISTEN -t 2>/dev/null | head -1; }
 
+# LAN access on by default - bind 0.0.0.0 so other devices on the LAN can hit
+# http://<your-ip>:3000. Pass --local-only to bind 127.0.0.1 only.
+if (( LOCAL_ONLY )); then
+    BIND_HOST="127.0.0.1"
+    LAN_IP=""
+else
+    BIND_HOST="0.0.0.0"
+    if [[ "$PLATFORM" == "macos" ]]; then
+        LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "")
+    else
+        LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [[ -z "$LAN_IP" ]] && LAN_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
+    fi
+    [[ -z "$LAN_IP" ]] && LAN_IP="<your-lan-ip>"
+    echo "LAN access: binding to 0.0.0.0 - reachable at http://$LAN_IP:3000 from other devices on your LAN"
+    echo "            Pass --local-only to restrict to 127.0.0.1 instead."
+fi
+
 if [[ -n "$(is_listening 8088)" ]]; then
     # Detect model change and restart if needed, otherwise reuse the running instance.
     LOADED_ID=$(get_loaded_model_id)
@@ -911,13 +947,13 @@ if [[ -z "$(is_listening 8088)" ]]; then
         --cache-type-k "$KV" --cache-type-v "$KV"
         -b "$UB" -ub "$UB"
         --jinja
-        --host 127.0.0.1 --port 8088
+        --host "$BIND_HOST" --port 8088
     )
     (( USE_OT_CPU )) && LLAMA_ARGS+=(--override-tensor "exps=CPU")
     (( USE_MLOCK ))  && LLAMA_ARGS+=(--mlock)
 
     nohup "$LLAMA" "${LLAMA_ARGS[@]}" >"$TOOLS/logs/llama-server.log" 2>&1 &
-    echo "llama-server -> http://127.0.0.1:8088  (log: $TOOLS/logs/llama-server.log)"
+    echo "llama-server -> http://$BIND_HOST:8088  (log: $TOOLS/logs/llama-server.log)"
 fi
 
 (( ONLY_LLAMA )) && { echo; echo "Done (--only-llama)."; exit 0; }
@@ -932,9 +968,10 @@ elif [[ -x "$WEBUI" ]]; then
     OPENAI_API_KEY=sk-llama-cpp \
     ENABLE_OLLAMA_API=False \
     DATA_DIR="$DATA_DIR" \
-    nohup "$WEBUI" serve --port 3000 --host 127.0.0.1 \
+    nohup "$WEBUI" serve --port 3000 --host "$BIND_HOST" \
         >"$TOOLS/logs/open-webui.log" 2>&1 &
-    echo "Open WebUI    -> http://127.0.0.1:3000  (log: $TOOLS/logs/open-webui.log)"
+    echo "Open WebUI    -> http://$BIND_HOST:3000  (log: $TOOLS/logs/open-webui.log)"
+    [[ -n "$LAN_IP" && "$LAN_IP" != "<your-lan-ip>" ]] && echo "              LAN URL: http://$LAN_IP:3000"
 else
     echo "Open WebUI not installed at $WEBUI - skipping"
 fi
@@ -963,9 +1000,9 @@ elif [[ -x "$MCPO" ]]; then
 }
 EOF
 
-    nohup "$MCPO" --config "$MCPO_CFG" --port 8091 --host 127.0.0.1 \
+    nohup "$MCPO" --config "$MCPO_CFG" --port 8091 --host "$BIND_HOST" \
         >"$TOOLS/logs/mcpo.log" 2>&1 &
-    echo "MCPO          -> http://127.0.0.1:8091  (log: $TOOLS/logs/mcpo.log)"
+    echo "MCPO          -> http://$BIND_HOST:8091  (log: $TOOLS/logs/mcpo.log)"
 else
     echo "MCPO not installed - skipping"
 fi
@@ -1009,17 +1046,19 @@ fi
 echo
 echo "================================================================"
 echo "  CHAT IS HERE:  http://127.0.0.1:3000"
+[[ -n "$LAN_IP" && "$LAN_IP" != "<your-lan-ip>" ]] && echo "  LAN ACCESS:    http://$LAN_IP:3000  (other devices on your LAN)"
 echo "================================================================"
 echo "  Open the URL above in your browser to start chatting."
 echo "  (Open WebUI may take ~30 sec to bind on first launch.)"
 echo
 echo "Other endpoints:"
-echo "  API:    http://127.0.0.1:8088/v1   (OpenAI-compatible - for Aider, opencode, etc.)"
-echo "  Tools:  http://127.0.0.1:8091      (MCP-as-OpenAPI - fetch/search/wiki/arxiv/time/memory)"
+echo "  API:    http://$BIND_HOST:8088/v1   (OpenAI-compatible - for Aider, opencode, etc.)"
+echo "  Tools:  http://$BIND_HOST:8091      (MCP-as-OpenAPI - fetch/search/wiki/arxiv/time/memory)"
 echo
 echo "Useful commands:"
 echo "  Switch model:    ./start.sh --pick"
-echo "  Pick by use:     ./start.sh --pick --sort coding   (or general/reasoning/cyber-offense/cyber-defense/newest/popular/downloaded)"
+echo "  Pick by use:     ./start.sh --pick --sort coding   (or general/reasoning/cyber-offense/cyber-defense/context/newest/popular/downloaded)"
 echo "  Measure perf:    ./start.sh --benchmark"
 echo "  Refresh stats:   python3 scripts/refresh-catalog.py   (HF likes/downloads, then re-run with --sort popular)"
+echo "  LAN-restrict:    ./start.sh --local-only   (bind 127.0.0.1 only, default is LAN-accessible)"
 echo "  Stop all:        pkill -f 'llama-server|open-webui|mcpo'"

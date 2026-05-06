@@ -227,11 +227,24 @@ Both scripts share the same flag conventions:
 |---|---|---|
 | `-Model "<id\|file>"` | `--model "<id\|file>"` | Use a specific catalog entry (by id) or GGUF filename |
 | `-Pick` | `--pick` | Force the interactive catalog picker (use case → sort → entry) |
-| `-Sort <key>` | `--sort <key>` | Pre-pick a sort: `coding` / `general` / `reasoning` / `cyber-offense` / `cyber-defense` / `newest` / `popular` / `downloaded`. Skips the second prompt. |
+| `-Sort <key>` | `--sort <key>` | Pre-pick a sort: `coding` / `general` / `reasoning` / `cyber-offense` / `cyber-defense` / `speed` / `smartness` / `context` / `newest` / `popular` / `downloaded`. Skips the second prompt. |
 | `-Benchmark` | `--benchmark` | After services come up, fire a cold + warm prompt and report tok/s |
 | `-DownloadOnly` | `--download-only` | Fetch the model and exit |
 | `-OnlyLlama` | `--only-llama` | Start only llama-server (skip Open WebUI + MCPO) |
 | `-Force` | `--force` | Stop running instances and relaunch with fresh flags |
+| `-LocalOnly` | `--local-only` | Bind services to 127.0.0.1 only. Default is **LAN-accessible** (0.0.0.0) — other devices on your LAN can reach `http://<your-ip>:3000` |
+
+### Picker fields and sorts
+
+Each entry in the picker shows: rank badge (`#1 ★ best in <category>`), hardware-fit marker (`[ok]/[~]/[!]`), estimated tok/s on your machine, fit description, **`ctx 128K`** (the model's native context window), release age, four benchmark scores (MMLU-Pro / LiveCodeBench / GPQA Diamond / CyberMetric), a **smartness composite** (avg of MMLU + LCB + GPQA, 0-100), and `GOOD AT` / `WEAK AT` blocks. The `*` marker on a benchmark label indicates the active sort key.
+
+Sort keys:
+- **`<category>`** (default) — sort by the category-relevant benchmark (LiveCodeBench for coding, GPQA for reasoning, CyberMetric for cyber lanes, MMLU-Pro for general)
+- **`speed`** — fastest tok/s on your detected hardware, descending
+- **`smartness`** — composite of MMLU-Pro + LiveCodeBench + GPQA Diamond, descending
+- **`context`** — biggest native context window, descending (Qwen3-Next 256K, Llama-3.x 128K, Qwen3 32K, Phi-4 16K)
+- **`newest`** — latest releaseDate
+- **`popular`** / **`downloaded`** — HuggingFace likes / downloads. Run `python scripts/refresh-catalog.py` first to populate.
 
 ## Use with a coding agent (recommended)
 
