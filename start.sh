@@ -39,38 +39,47 @@ done
 
 # ---------- Curated abliterated model catalog ----------
 # Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|tag
+# Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|activeB|good|bad
 CATALOG=(
-# ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
-"qwen3-4b-instruct|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + fast, daily chat on weak hw"
-"qwen3-4b-thinking|Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + reasoning chain-of-thought"
-"llama32-3b|Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)|mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|2|6|smallest viable, instruction following"
+# ====== TIER 0: Sub-3B ultralight (4-6 GiB RAM, ~1 GB on disk) ======
+"llama32-1b|Llama-3.2-1B-Instruct abliterated  Q4_K_M (~1 GB)|mradermacher/Llama-3.2-1B-Instruct-abliterated-i1-GGUF|Llama-3.2-1B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.2-1B-Instruct-abliterated.i1-Q4_K_M.gguf|1|4|1|ultra-fast on any hw, basic chat|shallow knowledge, weak code"
+"qwen3-1.7b|Qwen3-1.7B abliterated  Q4_K_M (~1 GB)|mradermacher/Huihui-Qwen3-1.7B-abliterated-i1-GGUF|Huihui-Qwen3-1.7B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-1.7B-abliterated.i1-Q4_K_M.gguf|1|4|1.7|ultra-fast, latest Qwen tiny|limited reasoning, poor at multi-step tasks"
 
-# ====== TIER 2: Small dense (10-12 GiB RAM, 5-9 GB on disk) ======
-"qwen3-8b|Qwen3-8B abliterated  Q4_K_M (~5 GB)|mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|5|10|dense 8B, balanced"
-"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|newer dense 9B, all-around"
-"llama31-8b|Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)|mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|5|10|Meta lineage, broad knowledge"
-"qwen3-14b|Qwen3-14B abliterated  Q4_K_M (~9 GB)|mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|9|14|dense 14B, more capable than 8B"
+# ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
+"qwen3-4b-instruct|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|4|daily chat, snappy, 8 GiB-RAM friendly|shallow on niche topics, weak coder"
+"qwen3-4b-thinking|Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|3|8|4|math/logic via chain-of-thought|thinking overhead slows replies, weak code"
+"llama32-3b|Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)|mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|2|6|3|broad world knowledge for size, follow instr.|older training, weak code"
+
+# ====== TIER 2: Small dense (10-14 GiB RAM, 5-9 GB on disk) ======
+"qwen3-8b|Qwen3-8B abliterated  Q4_K_M (~5 GB)|mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|5|10|8|balanced chat + code, fast on 8 GiB VRAM|not as deep as 14B+ for hard reasoning"
+"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|9|all-around, latest training, broad knowledge|generic; not specialized for code/research"
+"llama31-8b|Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)|mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|5|10|8|Meta lineage, strong tool use, broad knowledge|early-2025 training, weaker on Asian langs"
+"qwen3-14b|Qwen3-14B abliterated  Q4_K_M (~9 GB)|mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|9|14|14|deeper reasoning than 8B, still partial-GPU|spills out of 8 GiB VRAM, slower than A3B MoEs"
+
+# ====== TIER 2.5: Cybersecurity-tuned (8-12 GiB RAM, 5-8 GB on disk) ======
+"baronllm-cyber|BaronLLM Offensive Security abliterated  Q6_K (~7 GB)|huihui-ai/BaronLLM_Offensive_Security-abliterated-GGUF|BaronLLM_Offensive_Security-abliterated.Q6_K.gguf|*Q6_K*.gguf|7|10|8|exploit dev, recon scripting, red-team scenarios|narrow training; bad at general/code outside security"
+"whiterabbitneo-7b|WhiteRabbitNeo-V3-7B uncensored  Q4_K_M (~5 GB)|bartowski/WhiteRabbitNeo_WhiteRabbitNeo-V3-7B-GGUF|WhiteRabbitNeo_WhiteRabbitNeo-V3-7B-Q4_K_M.gguf|*Q4_K_M.gguf|5|10|7|cyber threat analysis, malware/network security|smaller than 30B+, narrow domain focus"
 
 # ====== TIER 3: Medium dense (16-24 GiB RAM, 17-20 GB on disk) ======
-"qwen25-coder-32b|Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|19|20|dense coder, every weight active"
-"qwen35-27b|Qwen3.5-27B abliterated  Q4_K_M (~17 GB)|mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|17|20|dense 27B, general purpose"
+"qwen25-coder-32b|Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|19|20|32|SOTA dense coder pre-Qwen3, deep code knowledge|every weight active = slow on small RAM"
+"qwen35-27b|Qwen3.5-27B abliterated  Q4_K_M (~17 GB)|mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|17|20|27|strong general dense, deeper than 14B|dense = bandwidth-bound; A3B MoEs faster"
 
 # ====== TIER 4: Small MoE A3B (12-16 GiB RAM, 19-22 GB on disk) - 3B active = fast even when streaming ======
-"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|code MoE, 3B active = fast"
-"qwen3-30b-instruct|Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|19|12|general chat MoE, 3B active"
-"qwen3-30b-thinking|Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|19|12|reasoning MoE with chain-of-thought"
-"qwen36-35b|Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)|mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|22|16|newer training, MoE 3B active"
+"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|3|code + agent loops, MoE 3B active = fast|not as deep as 80B coder; less general world knowledge"
+"qwen3-30b-instruct|Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|19|12|3|general chat, balanced, 3B active = fast|not specialized; weaker than coder for code"
+"qwen3-30b-thinking|Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|19|12|3|hard reasoning, math, multi-step research|thinking blocks slow replies; verbose"
+"qwen36-35b|Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)|mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|22|16|3|newest training (Apr 2026), 3B active = fast|not Coder-tuned; less specialized"
 
 # ====== TIER 5: 80B-A3B (NVMe-streaming territory, 16+ GiB RAM, 20-50 GB on disk) ======
-"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|80B brain code+agents via NVMe streaming"
-"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|80B general chat via NVMe streaming"
-"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|80B research/reasoning, autonomous tools"
-"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|80B coder higher quality (24+ GiB)"
-"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|80B coder full Q4 (56+ GiB)"
+"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|3|80B brain for code+agents via NVMe streaming|cold prompts slow on tight RAM, IQ2 quality dip"
+"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|3|80B general chat, broad knowledge|not coder-tuned; weaker on code edits"
+"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|3|80B reasoning + autonomous tool use|thinking overhead = long latency per reply"
+"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|3|80B coder higher quality than IQ2|needs 24+ GiB or page-thrashes"
+"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|3|80B coder full Q4 quality|needs 56+ GiB; below that = slow page-thrashing"
 
 # ====== TIER 6: 100B+ frontier (64-80 GiB RAM, 60-80 GB on disk) ======
-"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|106B-A12B, agentic research benchmark leader"
-"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen, 122B/A10B"
+"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|12|SOTA agentic research, deep multi-source synth|12B active = bandwidth-bound; needs 64+ GiB"
+"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|10|biggest abliterated Qwen, deep general knowledge|10B active = slow even with adequate RAM"
 )
 
 # Returns: 0=ok 1=tight 2=no
@@ -81,34 +90,75 @@ score_model() {
     return 0
 }
 
+# Estimate tok/s. Args: sizeGiB activeB ramGiB vramGiB. Echoes integer.
+# Implemented as a single awk one-liner to avoid bash history-expansion / quoting traps.
+estimate_tok_sec() {
+    awk -v size="$1" -v active="$2" -v ram="$3" -v vram="$4" '
+        BEGIN {
+            activeGB = active * 0.5
+            availRam = ram - 4
+            if (availRam < 2) availRam = 2
+
+            if (size <= vram - 0.5) {
+                # Mode 1: fits in VRAM
+                if (activeGB <= 1) print 60
+                else if (activeGB <= 2) print 40
+                else if (activeGB <= 4) print 22
+                else if (activeGB <= 8) print 14
+                else print 8
+                exit
+            }
+            if (size <= availRam) {
+                # Mode 2: fits in RAM cache
+                if (activeGB <= 1) print 25
+                else if (activeGB <= 3) print 15
+                else if (activeGB <= 6) print 8
+                else if (activeGB <= 10) print 4
+                else print 2
+                exit
+            }
+            # Mode 3: streaming from disk
+            cacheHit = availRam / size
+            if (cacheHit > 0.95) cacheHit = 0.95
+            if (activeGB <= 1.5) { v = 7 + 8*cacheHit; if (v<2) v=2; printf "%d", v }
+            else if (activeGB <= 3) { v = 3 + 4*cacheHit; if (v<1) v=1; printf "%d", v }
+            else if (activeGB <= 6) { v = 1 + 2*cacheHit; if (v<1) v=1; printf "%d", v }
+            else print 1
+        }'
+}
+
 show_catalog() {
-    local ramGiBVal=$1
+    local ramGiBVal=$1 vramGiBVal=$2
     echo
-    echo "Abliterated MoE catalog filtered by your RAM = $ramGiBVal GiB:"
-    echo "  [ok] fits in RAM cache  [~] tight, works but slow  [!] needs more RAM"
+    echo "Abliterated catalog (RAM=$ramGiBVal GiB, VRAM=$vramGiBVal GiB):"
+    echo "  [ok] fits cleanly  [~] tight (NVMe streaming)  [!] needs more RAM"
+    echo "  estimates approximate; real numbers depend on quant + RAM speed"
     echo
     local i=0
     for entry in "${CATALOG[@]}"; do
         i=$((i+1))
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram activeB good bad <<< "$entry"
         score_model "$minram" "$ramGiBVal" && marker="[ok]" || {
             local rc=$?
             if (( rc == 1 )); then marker="[~] "; else marker="[!] "; fi
         }
-        printf "  [%2d] %s %s\n" "$i" "$marker" "$name"
-        printf "        %s (needs %s+ GiB RAM)\n" "$tag" "$minram"
+        local tps
+        tps=$(estimate_tok_sec "$size" "$activeB" "$ramGiBVal" "$vramGiBVal")
+        printf "  [%2d] %s ~%3s tok/s  %s\n" "$i" "$marker" "$tps" "$name"
+        printf "         + %s\n" "$good"
+        printf "         - %s\n" "$bad"
     done
     echo
 }
 
 # Sets globals: SEL_FILE, SEL_REPO, SEL_PATTERN, SEL_NAME, SEL_MIN_RAM
 select_from_catalog() {
-    show_catalog "$RAM_GIB"
+    show_catalog "$RAM_GIB" "$VRAM_GIB"
     while true; do
         read -r -p "Pick a number 1-${#CATALOG[@]} (or 'q' to quit): " sel
         if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#CATALOG[@]} )); then
-            IFS='|' read -r id name repo file pattern size minram tag <<< "${CATALOG[$((sel-1))]}"
+            IFS='|' read -r id name repo file pattern size minram activeB good bad <<< "${CATALOG[$((sel-1))]}"
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minram"
             return 0
@@ -121,7 +171,7 @@ select_from_catalog() {
 list_local_models() {
     LOCAL_MODELS=()
     for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram activeB good bad <<< "$entry"
         if [[ -f "$HERE/$file" ]]; then
             local bytes
             bytes=$(stat -f%z "$HERE/$file" 2>/dev/null || stat -c%s "$HERE/$file")
@@ -248,7 +298,7 @@ manage_local_models() {
 # Legacy quick-find: returns 0 if any catalog model is on disk, sets SEL_*
 find_local_model() {
     for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram activeB good bad <<< "$entry"
         if [[ -f "$HERE/$file" ]]; then
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minram"
@@ -443,11 +493,14 @@ else  # linux
         VRAM_MIB=$(rocm-smi --showmeminfo vram 2>/dev/null | awk '/Total/ {print int($NF/1024/1024); exit}')
     fi
     if [[ -z "${VRAM_MIB:-}" || "$VRAM_MIB" -eq 0 ]]; then
-        # Fallback: ask llama-server which Vulkan/HIP/CUDA device it sees
+        # Fallback: ask llama-server which Vulkan/HIP/CUDA device it sees.
+        # Use grep+sed instead of bash =~ regex (literal "(" in [^(] tripped some bash builds).
         DEV=$("$LLAMA" --list-devices 2>&1 || true)
-        if [[ "$DEV" =~ (Vulkan|CUDA|HIP|SYCL)[0-9]+:\ *([^(]+)\(([0-9]+)\ MiB ]]; then
-            GPU_NAME="${BASH_REMATCH[2]}"
-            VRAM_MIB="${BASH_REMATCH[3]}"
+        local dev_line
+        dev_line=$(echo "$DEV" | grep -E '^(Vulkan|CUDA|HIP|SYCL)[0-9]+:' | head -1)
+        if [[ -n "$dev_line" ]]; then
+            GPU_NAME=$(echo "$dev_line" | sed -E 's/^[A-Za-z]+[0-9]+:[[:space:]]*([^(]+)\([0-9]+ MiB.*$/\1/' | xargs)
+            VRAM_MIB=$(echo "$dev_line" | sed -E 's/^.*\(([0-9]+) MiB.*$/\1/')
         fi
     fi
     RAM_MIB=$(free -m | awk '/^Mem:/ {print $2}')
@@ -474,7 +527,7 @@ if [[ -n "$MODEL" ]]; then
     # 2a. --model passed explicitly
     found=0
     for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram activeB good bad <<< "$entry"
         if [[ "$file" == "$MODEL" || "$id" == "$MODEL" ]]; then
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minram"

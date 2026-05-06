@@ -29,37 +29,45 @@ param(
 # Pattern is the HF allow_patterns glob for snapshot_download.
 # File is the path to pass to llama-server -m (relative to dir).
 $Catalog = @(
-    # ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
-    [pscustomobject]@{ Id='qwen3-4b-instruct';   Name='Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)';                Repo='mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF';            File='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';            Pattern='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';            SizeGiB=3;   MinRamGiB=8;  Tag='tiny + fast, daily chat on weak hw' }
-    [pscustomobject]@{ Id='qwen3-4b-thinking';   Name='Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)';                Repo='mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF';            File='Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf';            Pattern='Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf';            SizeGiB=3;   MinRamGiB=8;  Tag='tiny + reasoning chain-of-thought' }
-    [pscustomobject]@{ Id='llama32-3b';          Name='Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)';                 Repo='mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF';                    File='Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf';                    Pattern='Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf';                    SizeGiB=2;   MinRamGiB=6;  Tag='smallest viable, instruction following' }
+    # ====== TIER 0: Sub-3B ultralight (4-6 GiB RAM, <1.5 GB on disk) ======
+    [pscustomobject]@{ Id='llama32-1b';          Name='Llama-3.2-1B-Instruct abliterated  Q4_K_M (~1 GB)';        Repo='mradermacher/Llama-3.2-1B-Instruct-abliterated-i1-GGUF'; File='Llama-3.2-1B-Instruct-abliterated.i1-Q4_K_M.gguf'; Pattern='Llama-3.2-1B-Instruct-abliterated.i1-Q4_K_M.gguf'; SizeGiB=1; MinRamGiB=4; ActiveB=1;   Good='ultra-fast on any hw, basic chat'; Bad='shallow knowledge, weak code' }
+    [pscustomobject]@{ Id='qwen3-1.7b';          Name='Qwen3-1.7B abliterated  Q4_K_M (~1 GB)';                  Repo='mradermacher/Huihui-Qwen3-1.7B-abliterated-i1-GGUF';     File='Huihui-Qwen3-1.7B-abliterated.i1-Q4_K_M.gguf';     Pattern='Huihui-Qwen3-1.7B-abliterated.i1-Q4_K_M.gguf';     SizeGiB=1; MinRamGiB=4; ActiveB=1.7; Good='ultra-fast, latest Qwen tiny';     Bad='limited reasoning, poor at multi-step tasks' }
 
-    # ====== TIER 2: Small dense (10-12 GiB RAM, 5-9 GB on disk) ======
-    [pscustomobject]@{ Id='qwen3-8b';            Name='Qwen3-8B abliterated  Q4_K_M (~5 GB)';                              Repo='mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF';                       File='Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf';                       Pattern='Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf';                       SizeGiB=5;   MinRamGiB=10; Tag='dense 8B, balanced' }
-    [pscustomobject]@{ Id='qwen35-9b';           Name='Qwen3.5-9B abliterated  Q4_K_M (~6 GB)';                            Repo='mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF';                        File='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';                        Pattern='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';                        SizeGiB=6;   MinRamGiB=10; Tag='newer dense 9B, all-around' }
-    [pscustomobject]@{ Id='llama31-8b';          Name='Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)';                 Repo='mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF';                    File='Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf';                    Pattern='Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf';                    SizeGiB=5;   MinRamGiB=10; Tag='Meta lineage, broad knowledge' }
-    [pscustomobject]@{ Id='qwen3-14b';           Name='Qwen3-14B abliterated  Q4_K_M (~9 GB)';                             Repo='mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF';                      File='Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf';                      Pattern='Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf';                      SizeGiB=9;   MinRamGiB=14; Tag='dense 14B, more capable than 8B' }
+    # ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
+    [pscustomobject]@{ Id='qwen3-4b-instruct';   Name='Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)';      Repo='mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF'; File='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf'; SizeGiB=3; MinRamGiB=8; ActiveB=4; Good='daily chat, snappy, 8 GiB-RAM friendly';   Bad='shallow on niche topics, weak coder' }
+    [pscustomobject]@{ Id='qwen3-4b-thinking';   Name='Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)';      Repo='mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF'; File='Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf'; SizeGiB=3; MinRamGiB=8; ActiveB=4; Good='math/logic via chain-of-thought';          Bad='thinking overhead slows replies, weak code' }
+    [pscustomobject]@{ Id='llama32-3b';          Name='Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)';       Repo='mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF';        File='Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf';        Pattern='Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf';        SizeGiB=2; MinRamGiB=6; ActiveB=3; Good='broad world knowledge for size, follow instr.'; Bad='older training, weak code' }
+
+    # ====== TIER 2: Small dense (10-14 GiB RAM, 5-9 GB on disk) ======
+    [pscustomobject]@{ Id='qwen3-8b';            Name='Qwen3-8B abliterated  Q4_K_M (~5 GB)';                    Repo='mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF';   File='Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf'; SizeGiB=5; MinRamGiB=10; ActiveB=8; Good='balanced chat + code, fast on 8 GiB VRAM';     Bad='not as deep as 14B+ for hard reasoning' }
+    [pscustomobject]@{ Id='qwen35-9b';           Name='Qwen3.5-9B abliterated  Q4_K_M (~6 GB)';                  Repo='mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF';    File='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';    Pattern='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';    SizeGiB=6; MinRamGiB=10; ActiveB=9; Good='all-around, latest training, broad knowledge';  Bad='generic; not specialized for code/research' }
+    [pscustomobject]@{ Id='llama31-8b';          Name='Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)';       Repo='mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF';File='Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf';Pattern='Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf';SizeGiB=5; MinRamGiB=10; ActiveB=8; Good='Meta lineage, strong tool use, broad knowledge';Bad='early-2025 training (older), weaker on Asian langs' }
+    [pscustomobject]@{ Id='qwen3-14b';           Name='Qwen3-14B abliterated  Q4_K_M (~9 GB)';                   Repo='mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF';  File='Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf'; SizeGiB=9; MinRamGiB=14; ActiveB=14; Good='deeper reasoning than 8B, still partial-GPU';  Bad='spills out of 8 GiB VRAM, slower than A3B MoEs' }
+
+    # ====== TIER 2.5: Cybersecurity-tuned (8-12 GiB RAM, 5-8 GB on disk) ======
+    [pscustomobject]@{ Id='baronllm-cyber';      Name='BaronLLM Offensive Security abliterated  Q6_K (~7 GB)';   Repo='huihui-ai/BaronLLM_Offensive_Security-abliterated-GGUF'; File='BaronLLM_Offensive_Security-abliterated.Q6_K.gguf'; Pattern='*Q6_K*.gguf'; SizeGiB=7; MinRamGiB=10; ActiveB=8; Good='exploit dev, recon scripting, red-team scenarios'; Bad='narrow training; bad at general/code outside security' }
+    [pscustomobject]@{ Id='whiterabbitneo-7b';   Name='WhiteRabbitNeo-V3-7B uncensored  Q4_K_M (~5 GB)';         Repo='bartowski/WhiteRabbitNeo_WhiteRabbitNeo-V3-7B-GGUF';     File='WhiteRabbitNeo_WhiteRabbitNeo-V3-7B-Q4_K_M.gguf';   Pattern='*Q4_K_M.gguf'; SizeGiB=5; MinRamGiB=10; ActiveB=7; Good='cyber threat analysis, malware/network security';   Bad='smaller than 30B+, narrow domain focus' }
 
     # ====== TIER 3: Medium dense (16-24 GiB RAM, 17-20 GB on disk) ======
-    [pscustomobject]@{ Id='qwen25-coder-32b';    Name='Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)';           Repo='mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF';        File='Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf';        Pattern='Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf';        SizeGiB=19;  MinRamGiB=20; Tag='dense coder, every weight active' }
-    [pscustomobject]@{ Id='qwen35-27b';          Name='Qwen3.5-27B abliterated  Q4_K_M (~17 GB)';                          Repo='mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF';                       File='Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf';                       Pattern='Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf';                       SizeGiB=17;  MinRamGiB=20; Tag='dense 27B, general purpose' }
+    [pscustomobject]@{ Id='qwen25-coder-32b';    Name='Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)'; Repo='mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF'; File='Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf'; SizeGiB=19; MinRamGiB=20; ActiveB=32; Good='SOTA dense coder pre-Qwen3, deep code knowledge'; Bad='every weight active = slow on small RAM' }
+    [pscustomobject]@{ Id='qwen35-27b';          Name='Qwen3.5-27B abliterated  Q4_K_M (~17 GB)';                Repo='mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF';   File='Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf';   Pattern='Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf';  SizeGiB=17; MinRamGiB=20; ActiveB=27; Good='strong general dense, deeper than 14B';        Bad='dense = bandwidth-bound; A3B MoEs faster' }
 
     # ====== TIER 4: Small MoE A3B (12-16 GiB RAM, 19-22 GB on disk) - 3B active = fast even when streaming ======
-    [pscustomobject]@{ Id='qwen30-coder-q4';     Name='Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)';                  Repo='mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF';      File='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf';      Pattern='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf';      SizeGiB=19;  MinRamGiB=12; Tag='code MoE, 3B active = fast' }
-    [pscustomobject]@{ Id='qwen3-30b-instruct';  Name='Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)';          Repo='mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF';       File='Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';       Pattern='Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';       SizeGiB=19;  MinRamGiB=12; Tag='general chat MoE, 3B active' }
-    [pscustomobject]@{ Id='qwen3-30b-thinking';  Name='Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)';          Repo='mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF';       File='Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf';       Pattern='Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf';       SizeGiB=19;  MinRamGiB=12; Tag='reasoning MoE with chain-of-thought' }
-    [pscustomobject]@{ Id='qwen36-35b';          Name='Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)';                      Repo='mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF';                      File='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf';                      Pattern='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf';                      SizeGiB=22;  MinRamGiB=16; Tag='newer training, MoE 3B active' }
+    [pscustomobject]@{ Id='qwen30-coder-q4';     Name='Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)';        Repo='mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF'; File='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf'; SizeGiB=19; MinRamGiB=12; ActiveB=3; Good='code + agent loops, MoE 3B active = fast'; Bad='not as deep as 80B coder; less general world knowledge' }
+    [pscustomobject]@{ Id='qwen3-30b-instruct';  Name='Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)';Repo='mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF'; File='Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf'; SizeGiB=19; MinRamGiB=12; ActiveB=3; Good='general chat, balanced, 3B active = fast';     Bad='not specialized; weaker than coder for code, weaker than thinking for math' }
+    [pscustomobject]@{ Id='qwen3-30b-thinking';  Name='Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)';Repo='mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF'; File='Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf'; SizeGiB=19; MinRamGiB=12; ActiveB=3; Good='hard reasoning, math, multi-step research';      Bad='thinking blocks slow replies; verbose' }
+    [pscustomobject]@{ Id='qwen36-35b';          Name='Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)';            Repo='mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF';  File='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf';  Pattern='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf'; SizeGiB=22; MinRamGiB=16; ActiveB=3; Good='newest training (Apr 2026), 3B active = fast';   Bad='not Coder-tuned; less specialized' }
 
     # ====== TIER 5: 80B-A3B (NVMe-streaming territory, 16+ GiB RAM, 20-50 GB on disk) ======
-    [pscustomobject]@{ Id='coder-80b-iq2';       Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)';            Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                  File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';                 Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';                 SizeGiB=21;  MinRamGiB=16; Tag='80B brain code+agents via NVMe streaming' }
-    [pscustomobject]@{ Id='instruct-80b-iq2';    Name='Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)';          Repo='mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF';               File='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';              Pattern='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';              SizeGiB=21;  MinRamGiB=16; Tag='80B general chat via NVMe streaming' }
-    [pscustomobject]@{ Id='thinking-80b-iq2';    Name='Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)';          Repo='mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF';          File='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';         Pattern='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';         SizeGiB=21;  MinRamGiB=16; Tag='80B research/reasoning, autonomous tools' }
-    [pscustomobject]@{ Id='coder-80b-iq3';       Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)';            Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                  File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';                 Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';                 SizeGiB=31;  MinRamGiB=24; Tag='80B coder higher quality (24+ GiB)' }
-    [pscustomobject]@{ Id='coder-80b-q4';        Name='Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)';             Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                  File='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';                  Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';                  SizeGiB=48;  MinRamGiB=56; Tag='80B coder full Q4 (56+ GiB)' }
+    [pscustomobject]@{ Id='coder-80b-iq2';       Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)';  Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';     File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';         Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';         SizeGiB=21; MinRamGiB=16; ActiveB=3; Good='80B brain for code+agents via NVMe streaming'; Bad='cold prompts slow on tight RAM, IQ2 quality dip' }
+    [pscustomobject]@{ Id='instruct-80b-iq2';    Name='Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)';Repo='mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF';  File='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';       Pattern='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';       SizeGiB=21; MinRamGiB=16; ActiveB=3; Good='80B general chat, broad knowledge';            Bad='not coder-tuned; weaker on code edits' }
+    [pscustomobject]@{ Id='thinking-80b-iq2';    Name='Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)';Repo='mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF';File='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf'; Pattern='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf'; SizeGiB=21; MinRamGiB=16; ActiveB=3; Good='80B reasoning + autonomous tool use';          Bad='thinking overhead = long latency per reply' }
+    [pscustomobject]@{ Id='coder-80b-iq3';       Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)';  Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';     File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';         Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';         SizeGiB=31; MinRamGiB=24; ActiveB=3; Good='80B coder higher quality than IQ2';            Bad='needs 24+ GiB or page-thrashes' }
+    [pscustomobject]@{ Id='coder-80b-q4';        Name='Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)';   Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';     File='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';          Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';          SizeGiB=48; MinRamGiB=56; ActiveB=3; Good='80B coder full Q4 quality';                   Bad='needs 56+ GiB; below that = slow page-thrashing' }
 
     # ====== TIER 6: 100B+ frontier (64-80 GiB RAM, 60-80 GB on disk) ======
-    [pscustomobject]@{ Id='glm-air-106b';        Name='Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)';               Repo='huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF';                             File='GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf';                             Pattern='*UD-Q4_K_XL*.gguf';                                                   SizeGiB=63;  MinRamGiB=72; Tag='106B-A12B, agentic research benchmark leader' }
-    [pscustomobject]@{ Id='qwen35-122b';         Name='Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)';              Repo='huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF';                       File='Q4_K-GGUF\Q4_K-GGUF-00001-of-00008.gguf';                             Pattern='Q4_K-GGUF/*.gguf';                                                    SizeGiB=74;  MinRamGiB=80; Tag='biggest abliterated Qwen, 122B/A10B' }
+    [pscustomobject]@{ Id='glm-air-106b';        Name='Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)';     Repo='huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF';                 File='GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf';                Pattern='*UD-Q4_K_XL*.gguf';                                    SizeGiB=63; MinRamGiB=72; ActiveB=12; Good='SOTA agentic research, deep multi-source synth';Bad='12B active = bandwidth-bound; needs 64+ GiB' }
+    [pscustomobject]@{ Id='qwen35-122b';         Name='Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)';    Repo='huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF';           File='Q4_K-GGUF\Q4_K-GGUF-00001-of-00008.gguf';                Pattern='Q4_K-GGUF/*.gguf';                                     SizeGiB=74; MinRamGiB=80; ActiveB=10; Good='biggest abliterated Qwen, deep general knowledge'; Bad='10B active = slow even with adequate RAM' }
 )
 
 $ErrorActionPreference = "Stop"
@@ -162,24 +170,61 @@ function Get-ModelScore($m, $ramGiBVal) {
     return                                       @{ Tag='ok';    Marker='[ok]'; Color='Green'  }
 }
 
-function Show-Catalog($ramGiBVal) {
+# Estimate tok/s for a catalog entry given user's hardware. Approximate buckets;
+# real numbers vary by quant and CPU but this gives an honest expectation.
+function Get-TokSecEstimate($m, $ramGiBVal, $vramGiBVal) {
+    # Active-param working set (Q4-ish: ~0.5 bytes per param)
+    $activeGB = [double]$m.ActiveB * 0.5
+    $availRam = [Math]::Max(2, $ramGiBVal - 4)
+
+    # Mode 1: model fits entirely in VRAM (GPU-bound)
+    if ($m.SizeGiB -le ($vramGiBVal - 0.5)) {
+        if ($activeGB -le 1) { return 60 }
+        if ($activeGB -le 2) { return 40 }
+        if ($activeGB -le 4) { return 22 }
+        if ($activeGB -le 8) { return 14 }
+        return 8
+    }
+    # Mode 2: file > VRAM but fits in RAM cache (partial GPU + RAM bandwidth bound)
+    if ($m.SizeGiB -le $availRam) {
+        if ($activeGB -le 1)  { return 25 }
+        if ($activeGB -le 3)  { return 15 }
+        if ($activeGB -le 6)  { return 8 }
+        if ($activeGB -le 10) { return 4 }
+        return 2
+    }
+    # Mode 3: streaming from disk
+    $cacheHit = [Math]::Min(0.95, $availRam / $m.SizeGiB)
+    if ($activeGB -le 1.5) { return [int][Math]::Max(2, 7 + 8 * $cacheHit) }
+    if ($activeGB -le 3)   { return [int][Math]::Max(1, 3 + 4 * $cacheHit) }
+    if ($activeGB -le 6)   { return [int][Math]::Max(1, 1 + 2 * $cacheHit) }
+    return 1
+}
+
+function Show-Catalog($ramGiBVal, $vramGiBVal) {
     Write-Host ""
-    Write-Host "Available abliterated MoE models (filtered by your RAM = $ramGiBVal GiB):" -ForegroundColor Cyan
-    Write-Host "  [ok] fits in RAM cache, no disk paging  [~] tight, will work but slow  [!] needs more RAM" -ForegroundColor DarkGray
+    Write-Host "Abliterated model catalog (your RAM=$ramGiBVal GiB, VRAM=$vramGiBVal GiB):" -ForegroundColor Cyan
+    Write-Host "  [ok] fits cleanly  [~] tight (NVMe streaming)  [!] needs more RAM" -ForegroundColor DarkGray
+    Write-Host "  estimates are approximate; real numbers depend on quant + RAM speed" -ForegroundColor DarkGray
     Write-Host ""
     $i = 0
     foreach ($m in $Catalog) {
         $i++
-        $s = Get-ModelScore $m $ramGiBVal
-        $line1 = ("  [{0,2}] {1} {2}" -f $i, $s.Marker, $m.Name)
+        $s   = Get-ModelScore     $m $ramGiBVal
+        $tps = Get-TokSecEstimate $m $ramGiBVal $vramGiBVal
+        $tpsLabel = ("~{0,3} tok/s" -f $tps)
+        $line1 = ("  [{0,2}] {1} {2}  {3}" -f $i, $s.Marker, $tpsLabel, $m.Name)
         Write-Host $line1 -ForegroundColor $s.Color
-        Write-Host ("        {0} (needs {1}+ GiB RAM)" -f $m.Tag, $m.MinRamGiB) -ForegroundColor DarkGray
+        if ($m.PSObject.Properties['Good']) {
+            Write-Host ("         + {0}" -f $m.Good) -ForegroundColor DarkGreen
+            Write-Host ("         - {0}" -f $m.Bad)  -ForegroundColor DarkGray
+        }
     }
     Write-Host ""
 }
 
-function Select-Model($ramGiBVal) {
-    Show-Catalog $ramGiBVal
+function Select-Model($ramGiBVal, $vramGiBVal) {
+    Show-Catalog $ramGiBVal $vramGiBVal
     while ($true) {
         $sel = Read-Host "Pick a number 1-$($Catalog.Count) (or 'q' to quit)"
         if ($sel -eq 'q' -or $sel -eq 'Q') { return $null }
@@ -260,7 +305,7 @@ function Remove-LocalModel($localEntry, $baseDir) {
 
 # Interactive prompt when models exist on disk: run, delete, or get a new one.
 # Returns: a catalog entry to use, or $null if user aborted.
-function Manage-LocalModels($localModels, $baseDir, $ramGiBVal) {
+function Manage-LocalModels($localModels, $baseDir, $ramGiBVal, $vramGiBVal) {
     while ($localModels.Count -gt 0) {
         Write-Host ""
         Write-Host "Models already on disk:" -ForegroundColor Cyan
@@ -303,19 +348,19 @@ function Manage-LocalModels($localModels, $baseDir, $ramGiBVal) {
         }
 
         if ($sel -eq 'n' -or $sel -eq 'N') {
-            return Select-Model $ramGiBVal
+            return Select-Model $ramGiBVal $vramGiBVal
         }
 
         if ($sel -eq 'a' -or $sel -eq 'A') {
             Write-Host "Deleting all on-disk catalog models..." -ForegroundColor Yellow
             foreach ($lm in $localModels) { Remove-LocalModel $lm $baseDir }
-            return Select-Model $ramGiBVal
+            return Select-Model $ramGiBVal $vramGiBVal
         }
 
         Write-Host "Invalid. Pick 1-$($localModels.Count), 'd N', 'n', 'a', or 'q'." -ForegroundColor Yellow
     }
     # All models deleted by the loop above
-    return Select-Model $ramGiBVal
+    return Select-Model $ramGiBVal $vramGiBVal
 }
 
 # ---------- 0. Bootstrap (install missing dependencies) ----------
@@ -419,7 +464,7 @@ if ($Model) {
 
 # 2b. -Pick forces the picker
 if (-not $selected -and $Pick) {
-    $selected = Select-Model $ramGiB
+    $selected = Select-Model $ramGiB $vramGiB
     if (-not $selected) { Write-Host "Aborted."; return }
 }
 
@@ -428,7 +473,7 @@ if (-not $selected) {
     $localModels = Get-LocalModels $here
     if ($localModels.Count -gt 0) {
         # Models exist on disk — let user manage them (run / delete / download new)
-        $selected = Manage-LocalModels $localModels $here $ramGiB
+        $selected = Manage-LocalModels $localModels $here $ramGiB $vramGiB
         if (-not $selected) { Write-Host "Aborted."; return }
     }
 }
@@ -437,7 +482,7 @@ if (-not $selected) {
 if (-not $selected) {
     Write-Host "No local model found." -ForegroundColor Yellow
     Write-Host "Below is a catalog of abliterated MoE models filtered against your detected RAM."
-    $selected = Select-Model $ramGiB
+    $selected = Select-Model $ramGiB $vramGiB
     if (-not $selected) { Write-Host "Aborted."; return }
 }
 
