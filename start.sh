@@ -125,6 +125,21 @@ stop_llama_server() {
     fi
 }
 
+# Stop Open WebUI. Used when model changes so the browser's frontend cache
+# (Svelte stores) gets invalidated on websocket reconnect; otherwise the model
+# dropdown shows stale entries even though the backend has fresh data.
+stop_open_webui() {
+    local pid
+    pid=$(lsof -i :3000 -sTCP:LISTEN -t 2>/dev/null | head -1)
+    if [[ -n "$pid" ]]; then
+        echo "  stopping Open WebUI (PID $pid)..."
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 2
+        # Force-kill if still alive
+        kill -KILL "$pid" 2>/dev/null || true
+    fi
+}
+
 # Returns the model id currently loaded by llama-server, or empty if not running.
 get_loaded_model_id() {
     curl -fsS "http://127.0.0.1:8088/v1/models" 2>/dev/null \
@@ -561,6 +576,9 @@ if [[ -n "$(is_listening 8088)" ]]; then
     if [[ -n "$LOADED_ID" && "$LOADED_ID" != "$SELECTED_LEAF" && "$LOADED_ID" != "$MODEL_PATH" ]]; then
         echo "Model change detected: '$LOADED_ID' -> '$SELECTED_LEAF'"
         stop_llama_server
+        # Bounce Open WebUI too so the browser's Svelte cache invalidates
+        # on websocket reconnect (model dropdown updates without manual refresh).
+        stop_open_webui
     else
         echo "llama-server already on :8088 with the selected model (use --force to relaunch with fresh flags)"
     fi

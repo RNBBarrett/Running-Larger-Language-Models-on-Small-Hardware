@@ -206,6 +206,18 @@ function Stop-LlamaServer {
     }
 }
 
+# Stop Open WebUI. Used when model changes so the browser's frontend cache
+# (Svelte stores) gets invalidated on websocket reconnect; otherwise the model
+# dropdown shows stale entries even though the backend has fresh data.
+function Stop-OpenWebUI {
+    $port = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
+    if ($port) {
+        Write-Host ("  stopping Open WebUI (PID {0})..." -f $port.OwningProcess) -ForegroundColor DarkGray
+        Stop-Process -Id $port.OwningProcess -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+    }
+}
+
 # Returns the model id currently loaded by llama-server, or $null if not running.
 function Get-LoadedModelId {
     try {
@@ -513,6 +525,9 @@ if ($llamaUp) {
     if ($loadedId -and $loadedId -ne $selectedLeaf -and $loadedId -ne $modelPath) {
         Write-Host ("Model change detected: '{0}' -> '{1}'" -f $loadedId, $selectedLeaf) -ForegroundColor Yellow
         Stop-LlamaServer
+        # Also bounce Open WebUI so its frontend Svelte cache picks up the new
+        # model in the dropdown without requiring a manual browser refresh.
+        Stop-OpenWebUI
         $llamaUp = $null  # fall through to launch
     } else {
         Write-Host "llama-server already running on :8088 (PID $($llamaUp.OwningProcess)) with the selected model. Use -Force to relaunch with fresh flags."
