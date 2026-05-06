@@ -172,7 +172,23 @@ chmod +x ./start.sh   # one-time
 4. Download whichever model you choose from HuggingFace
 5. Auto-tune the `llama.cpp` flags and launch the stack
 
-Subsequent runs skip the install steps and just bring services back up.
+**On subsequent runs** (when models are already on disk), the script shows a **manage menu** instead of silently picking one:
+
+```
+Models already on disk:
+  [1] Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS  (19.6 GiB)
+        Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf  modified 2026-05-06 07:45
+  [2] Qwen3.5-122B-A10B abliterated  Q4_K (sharded)  (74.0 GiB)
+        Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf       modified 2026-05-06 19:22
+
+  [1-2]    run with that model
+  d <num>  delete that model (frees disk)
+  n        download a different one from catalog
+  a        delete ALL and pick fresh from catalog
+  q        abort
+```
+
+The bootstrap steps (llama.cpp / venv install) still skip when already present.
 
 **The script never picks a model for you.** First run shows the catalog scored against your detected RAM and asks which one you want. Whichever you pick gets downloaded and launched. Subsequent runs detect the on-disk model and reuse it (use `-Pick` / `--pick` any time to switch).
 

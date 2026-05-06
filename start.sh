@@ -102,8 +102,104 @@ select_from_catalog() {
     done
 }
 
-# Find a catalog model that's already on disk (no auto-default — only if user
-# has previously downloaded one). Returns 0 if found, sets SEL_*
+# Populates LOCAL_MODELS array with "<idx>|<file>|<gib>|<name>|<repo>|<pattern>|<minram>" for each catalog entry on disk
+list_local_models() {
+    LOCAL_MODELS=()
+    for entry in "${CATALOG[@]}"; do
+        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        if [[ -f "$HERE/$file" ]]; then
+            local bytes
+            bytes=$(stat -f%z "$HERE/$file" 2>/dev/null || stat -c%s "$HERE/$file")
+            local gib
+            gib=$(awk "BEGIN{printf \"%.1f\", $bytes/1024/1024/1024}")
+            LOCAL_MODELS+=("$file|$gib|$name|$repo|$pattern|$minram")
+        fi
+    done
+}
+
+# Delete a local model by file path. For sharded models (file under subdir of
+# $HERE), removes the whole subdir. For single GGUFs, removes just the file.
+remove_local_model() {
+    local file="$1"
+    local fullpath="$HERE/$file"
+    local parent
+    parent=$(dirname "$fullpath")
+    if [[ "$parent" != "$HERE" ]]; then
+        echo "  Removing folder: $parent"
+        rm -rf "$parent"
+    else
+        echo "  Removing file: $fullpath"
+        rm -f "$fullpath"
+    fi
+}
+
+# Interactive manage menu when models are already on disk.
+# Sets SEL_* on success, returns 1 if user aborted.
+manage_local_models() {
+    list_local_models
+    while (( ${#LOCAL_MODELS[@]} > 0 )); do
+        echo
+        echo "Models already on disk:"
+        local i=0
+        for entry in "${LOCAL_MODELS[@]}"; do
+            i=$((i+1))
+            IFS='|' read -r file gib name repo pattern minram <<< "$entry"
+            printf "  [%d] %s  (%s GiB)\n" "$i" "$name" "$gib"
+            printf "        %s\n" "$file"
+        done
+        echo
+        echo "  [1-${#LOCAL_MODELS[@]}]   run with that model"
+        echo "  d <num>   delete that model"
+        echo "  n         download a different one (catalog)"
+        echo "  a         delete ALL and pick fresh from catalog"
+        echo "  q         abort"
+        read -r -p "Choose: " sel
+
+        if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
+
+        if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#LOCAL_MODELS[@]} )); then
+            IFS='|' read -r file gib name repo pattern minram <<< "${LOCAL_MODELS[$((sel-1))]}"
+            SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
+            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
+            return 0
+        fi
+
+        if [[ "$sel" =~ ^[Dd][[:space:]]*([0-9]+)$ ]]; then
+            local n=${BASH_REMATCH[1]}
+            if (( n >= 1 && n <= ${#LOCAL_MODELS[@]} )); then
+                IFS='|' read -r file gib name repo pattern minram <<< "${LOCAL_MODELS[$((n-1))]}"
+                echo "Deleting $name ($gib GiB)..."
+                remove_local_model "$file"
+                list_local_models
+                continue
+            fi
+            echo "Out of range."
+            continue
+        fi
+
+        if [[ "$sel" =~ ^[Nn]$ ]]; then
+            select_from_catalog
+            return $?
+        fi
+
+        if [[ "$sel" =~ ^[Aa]$ ]]; then
+            echo "Deleting all on-disk catalog models..."
+            for entry in "${LOCAL_MODELS[@]}"; do
+                IFS='|' read -r file gib name repo pattern minram <<< "$entry"
+                remove_local_model "$file"
+            done
+            select_from_catalog
+            return $?
+        fi
+
+        echo "Invalid. Pick 1-${#LOCAL_MODELS[@]}, 'd N', 'n', 'a', or 'q'."
+    done
+    # All deleted by interactive deletes
+    select_from_catalog
+    return $?
+}
+
+# Legacy quick-find: returns 0 if any catalog model is on disk, sets SEL_*
 find_local_model() {
     for entry in "${CATALOG[@]}"; do
         IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
@@ -346,14 +442,16 @@ if [[ -n "$MODEL" ]]; then
 elif (( PICK )); then
     # 2b. --pick forces picker
     if ! select_from_catalog; then echo "Aborted."; exit 0; fi
-elif find_local_model; then
-    # 2c. Use whichever catalog model is already on disk
-    :
 else
-    # 2d. Nothing on disk, no --model: always show picker, never auto-pick
-    echo "No local model found."
-    echo "Below is a catalog of abliterated MoE models filtered against your detected RAM."
-    if ! select_from_catalog; then echo "Aborted."; exit 0; fi
+    # 2c. Models on disk → manage menu (run/delete/download new). Otherwise show catalog.
+    list_local_models
+    if (( ${#LOCAL_MODELS[@]} > 0 )); then
+        if ! manage_local_models; then echo "Aborted."; exit 0; fi
+    else
+        echo "No local model found."
+        echo "Below is a catalog of abliterated MoE models filtered against your detected RAM."
+        if ! select_from_catalog; then echo "Aborted."; exit 0; fi
+    fi
 fi
 
 MODEL="$SEL_FILE"

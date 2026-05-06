@@ -176,6 +176,97 @@ function Select-Model($ramGiBVal) {
     }
 }
 
+# Find catalog models that are already downloaded on disk.
+function Get-LocalModels($baseDir) {
+    $found = @()
+    foreach ($m in $Catalog) {
+        $p = Join-Path $baseDir $m.File
+        if (Test-Path $p) {
+            $found += [pscustomobject]@{
+                Entry = $m
+                Path  = $p
+                GiB   = [math]::Round((Get-Item $p).Length / 1GB, 1)
+                Mtime = (Get-Item $p).LastWriteTime
+            }
+        }
+    }
+    return ,$found  # comma forces array even with one element
+}
+
+# Remove an on-disk model. For sharded models (file inside subdir), nukes the
+# whole subdir. For single GGUFs in $here, removes just the file.
+function Remove-LocalModel($localEntry, $baseDir) {
+    $p = $localEntry.Path
+    $parent = Split-Path -Parent $p
+    if ($parent -ne $baseDir) {
+        Write-Host ("  Removing folder: {0}" -f $parent)
+        Remove-Item $parent -Recurse -Force
+    } else {
+        Write-Host ("  Removing file: {0}" -f $p)
+        Remove-Item $p -Force
+    }
+}
+
+# Interactive prompt when models exist on disk: run, delete, or get a new one.
+# Returns: a catalog entry to use, or $null if user aborted.
+function Manage-LocalModels($localModels, $baseDir, $ramGiBVal) {
+    while ($localModels.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Models already on disk:" -ForegroundColor Cyan
+        $i = 0
+        foreach ($lm in $localModels) {
+            $i++
+            Write-Host ("  [{0}] {1}  ({2} GiB)" -f $i, $lm.Entry.Name, $lm.GiB) -ForegroundColor Green
+            Write-Host ("        {0}  modified {1}" -f $lm.Entry.File, $lm.Mtime.ToString('yyyy-MM-dd HH:mm')) -ForegroundColor DarkGray
+        }
+        Write-Host ""
+        Write-Host "  [1-$($localModels.Count)]   run with that model"
+        Write-Host "  d <num>   delete that model"
+        Write-Host "  n         download a different one (catalog)"
+        Write-Host "  a         delete ALL and pick fresh from catalog"
+        Write-Host "  q         abort"
+
+        $sel = Read-Host "Choose"
+        if ($sel -match '^([Qq])$') { return $null }
+
+        # Pick a number to run with
+        if ($sel -match '^([0-9]+)$') {
+            $n = [int]$matches[1]
+            if ($n -ge 1 -and $n -le $localModels.Count) { return $localModels[$n-1].Entry }
+            Write-Host "Out of range." -ForegroundColor Yellow
+            continue
+        }
+
+        # Delete a specific one
+        if ($sel -match '^[Dd]\s*([0-9]+)$') {
+            $n = [int]$matches[1]
+            if ($n -ge 1 -and $n -le $localModels.Count) {
+                $target = $localModels[$n-1]
+                Write-Host ("Deleting {0} ({1} GiB)..." -f $target.Entry.Name, $target.GiB) -ForegroundColor Yellow
+                Remove-LocalModel $target $baseDir
+                $localModels = Get-LocalModels $baseDir
+                continue
+            }
+            Write-Host "Out of range." -ForegroundColor Yellow
+            continue
+        }
+
+        if ($sel -eq 'n' -or $sel -eq 'N') {
+            return Select-Model $ramGiBVal
+        }
+
+        if ($sel -eq 'a' -or $sel -eq 'A') {
+            Write-Host "Deleting all on-disk catalog models..." -ForegroundColor Yellow
+            foreach ($lm in $localModels) { Remove-LocalModel $lm $baseDir }
+            return Select-Model $ramGiBVal
+        }
+
+        Write-Host "Invalid. Pick 1-$($localModels.Count), 'd N', 'n', 'a', or 'q'." -ForegroundColor Yellow
+    }
+    # All models deleted by the loop above
+    return Select-Model $ramGiBVal
+}
+
 # ---------- 0. Bootstrap (install missing dependencies) ----------
 Section "Bootstrap"
 
@@ -281,16 +372,17 @@ if (-not $selected -and $Pick) {
     if (-not $selected) { Write-Host "Aborted."; return }
 }
 
-# 2c. No -Model and no -Pick: prefer a catalog model already on disk
+# 2c. No -Model and no -Pick: scan disk for catalog models
 if (-not $selected) {
-    foreach ($m in $Catalog) {
-        $candidatePath = Join-Path $here $m.File
-        if (Test-Path $candidatePath) { $selected = $m; break }
+    $localModels = Get-LocalModels $here
+    if ($localModels.Count -gt 0) {
+        # Models exist on disk — let user manage them (run / delete / download new)
+        $selected = Manage-LocalModels $localModels $here $ramGiB
+        if (-not $selected) { Write-Host "Aborted."; return }
     }
 }
 
-# 2d. Still nothing? Show the picker — never silently auto-pick the 80B or
-# anything else. Make sure the user sees what fits their hardware.
+# 2d. Nothing on disk → catalog picker (never silently auto-pick anything)
 if (-not $selected) {
     Write-Host "No local model found." -ForegroundColor Yellow
     Write-Host "Below is a catalog of abliterated MoE models filtered against your detected RAM."
@@ -476,7 +568,10 @@ if ($mcpoUp) {
             memory     = @{ command = $npxPath; args = @('-y','@modelcontextprotocol/server-memory'); env = @{ MEMORY_FILE_PATH = $memoryFile } }
         }
     }
-    $cfg | ConvertTo-Json -Depth 6 | Set-Content -Path $mcpoConfig -Encoding utf8
+    # Write UTF-8 WITHOUT BOM. PowerShell's Set-Content -Encoding utf8 prepends a
+    # BOM (EF BB BF) which MCPO's JSON parser rejects with "Expecting value: line 1 column 1".
+    $json = $cfg | ConvertTo-Json -Depth 6
+    [System.IO.File]::WriteAllText($mcpoConfig, $json, [System.Text.UTF8Encoding]::new($false))
     if (-not (Test-Path $arxivStorage)) { New-Item -ItemType Directory -Path $arxivStorage -Force | Out-Null }
 
     Start-Process -FilePath $mcpo -ArgumentList "--config",$mcpoConfig,"--port","8091","--host","127.0.0.1" -WindowStyle Normal
