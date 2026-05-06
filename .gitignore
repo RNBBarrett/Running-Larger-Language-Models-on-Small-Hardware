@@ -1,0 +1,14 @@
+# Model files — auto-downloaded by start.ps1 / start.sh from the catalog
+*.gguf
+Q4_K-GGUF/
+Q5_K-GGUF/
+Q6_K-GGUF/
+Q8_K-GGUF/
+*-GGUF/
+
+# HuggingFace download artifacts
+.cache/
+.huggingface/
+
+# Open WebUI runtime
+.webui_secret_key
