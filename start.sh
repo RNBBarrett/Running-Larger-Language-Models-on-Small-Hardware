@@ -131,29 +131,124 @@ load_category_counts() {
     done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON" --counts)
 }
 
+# Compute the smartness composite (avg of mmluPro, liveCodeBench, gpqaDiamond) from numeric fields.
+# Echoes integer 0-100, or empty string if no benchmarks present.
+compute_smartness() {
+    local mmlu=$1 lcb=$2 gpqa=$3
+    awk -v a="$mmlu" -v b="$lcb" -v c="$gpqa" 'BEGIN {
+        n = 0; sum = 0
+        if (a != "" && a + 0 == a) { sum += a; n++ }
+        if (b != "" && b + 0 == b) { sum += b; n++ }
+        if (c != "" && c + 0 == c) { sum += c; n++ }
+        if (n == 0) { print ""; exit }
+        printf "%d\n", int(sum/n + 0.5)
+    }'
+}
+
+# Humanize an age in days into "X days ago" / "Y months ago" / "N.N years ago".
+humanize_age() {
+    local days=$1
+    [[ -z "$days" ]] && { echo "release date unknown"; return; }
+    awk -v d="$days" 'BEGIN {
+        if (d < 30) printf "%d days ago\n", d
+        else if (d < 365) printf "%d months ago\n", int(d/30)
+        else printf "%.1f years ago\n", d/365
+    }'
+}
+
+# Days between today and a YYYY-MM-DD release date. Empty if rdate empty.
+days_since() {
+    local rdate=$1
+    [[ -z "$rdate" ]] && return
+    python3 -c "
+from datetime import date
+y,m,d = '$rdate'.split('-')
+print((date.today() - date(int(y),int(m),int(d))).days)
+" 2>/dev/null
+}
+
+# Wrap text at WIDTH chars, prefixing continuation lines with INDENT.
+# Args: text width indent
+wrap_text() {
+    awk -v width="$2" -v indent="$3" -v text="$1" 'BEGIN {
+        n = split(text, words, /[ \t\n]+/)
+        line = ""; first = 1
+        for (i = 1; i <= n; i++) {
+            w = words[i]
+            if (length(line " " w) - 1 <= width) {
+                if (line == "") line = w
+                else line = line " " w
+            } else {
+                if (first) { print line; first = 0 } else { print indent line }
+                line = w
+            }
+        }
+        if (line != "") {
+            if (first) print line; else print indent line
+        }
+    }'
+}
+
 # Show entries — input via stdin (lines from helper).
-# Args: ramGiB vramGiB sortLabel
+# Args: ramGiB vramGiB sortLabel primaryKey warnBanner
 show_entries() {
-    local ramGiB=$1 vramGiB=$2 sortLabel="$3"
+    local ramGiB=$1 vramGiB=$2 sortLabel="$3" primaryKey="${4:-}" warnBanner="${5:-}"
     echo
     echo "Models (sorted by: $sortLabel, RAM=${ramGiB} GiB, VRAM=${vramGiB} GiB):"
+    if [[ -n "$warnBanner" ]]; then
+        echo
+        echo "  [!] $warnBanner"
+    fi
     echo "  [ok] fits cleanly  [~] tight (NVMe streaming)  [!] needs more RAM"
-    echo "  benchmarks are full-precision base; quants take a small hit"
-    echo
+    echo "  benchmarks are full-precision base; quants take a small hit (see quantPenalty)"
+    echo "  '*' on a bench label = primary metric for the active sort"
     local i=0
     while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
         [[ -z "$id" ]] && continue
         i=$((i+1))
         local marker; marker=$(mark_for_ram "$minRam" "$ramGiB")
         local tps; tps=$(estimate_tok_sec "$sizeGiB" "$activeB" "$ramGiB" "$vramGiB")
-        printf "  [%2d] %s ~%3s t/s  [%-13s] %s\n" "$i" "$marker" "$tps" "$cat" "$name"
+        local smart; smart=$(compute_smartness "$mmlu" "$lcb" "$gpqa")
+        local age_days; age_days=$(days_since "$rdate")
+        local age_txt; age_txt=$(humanize_age "$age_days")
+        local fit_word
+        case "$marker" in
+            "[ok]") fit_word="fits cleanly" ;;
+            "[~] ") fit_word="tight, NVMe streaming" ;;
+            *)      fit_word="needs more RAM" ;;
+        esac
+
+        local rank_badge="#$i"
+        if (( i == 1 )); then rank_badge="#$i  * best in $cat"; fi
+
+        local smart_txt="smartness n/a"
+        [[ -n "$smart" ]] && smart_txt="smartness $smart/100"
+
+        # Build bench line with optional '*' marker on the primary key.
+        local bm="" lm="" gm="" cm=""
+        [[ "$primaryKey" == "mmluPro" ]]       && bm="*"
+        [[ "$primaryKey" == "liveCodeBench" ]] && lm="*"
+        [[ "$primaryKey" == "gpqaDiamond" ]]   && gm="*"
+        [[ "$primaryKey" == "cyberMetric" ]]   && cm="*"
         local bench=""
-        bench+="LCB:${lcb:--} MMLU:${mmlu:--} GPQA:${gpqa:--}"
-        [[ -n "$cyb" ]] && bench+=" cyber:$cyb"
-        [[ -n "$rdate" ]] && bench+="  rel:$rdate"
-        printf "         %s\n" "$bench"
-        [[ -n "$good" ]] && printf "         + %s\n" "$good"
-        [[ -n "$bad"  ]] && printf "         - %s\n" "$bad"
+        bench+="${bm} MMLU ${mmlu:--}   "
+        bench+="${lm} LCB ${lcb:--}   "
+        bench+="${gm} GPQA ${gpqa:--}"
+        [[ -n "$cyb" ]] && bench+="   ${cm} Cyber ${cyb}"
+
+        echo
+        printf "  %s\n" "$rank_badge"
+        printf "       %s   [%s]\n" "$name" "$cat"
+        printf "       %s  ~%s t/s  -  %s  -  released %s\n" "$marker" "$tps" "$fit_word" "$age_txt"
+        printf "       %s    %s\n" "$bench" "$smart_txt"
+        if [[ -n "$good" ]]; then
+            printf "       GOOD AT  "
+            wrap_text "$good" 64 "                "
+        fi
+        if [[ -n "$bad" ]]; then
+            printf "       WEAK AT  "
+            wrap_text "$bad" 64 "                "
+        fi
     done
     echo
 }
@@ -193,43 +288,102 @@ select_from_catalog() {
         local pb; pb=$(primary_bench_for_category "$category")
         echo
         echo "Sort by:"
-        echo "  [1] performance ($pb, default)"
-        echo "  [2] newest first"
-        echo "  [3] most popular   (HF likes - run scripts/refresh-catalog.py first)"
-        echo "  [4] most downloaded (HF downloads - run scripts/refresh-catalog.py first)"
-        echo "  [5] back"
+        printf "  [1] smartest in %-15s (%s, default)\n" "$category" "$pb"
+        echo "  [2] fastest on this machine    (estimated tok/s, descending)"
+        echo "  [3] smartest overall           (composite of MMLU-Pro + LCB + GPQA)"
+        echo "  [4] newest first"
+        echo "  [5] most popular               (HF likes - refresh-catalog.py first)"
+        echo "  [6] most downloaded            (HF downloads - refresh-catalog.py first)"
+        echo "  [7] back"
         while true; do
-            read -r -p "Pick (1-5): " s
+            read -r -p "Pick (1-7): " s
             case "$s" in
                 ""|1) sortVal="$category"; break ;;
-                2) sortVal="newest"; break ;;
-                3) sortVal="popular"; break ;;
-                4) sortVal="downloaded"; break ;;
-                5|b|B) return 2 ;;  # signal: back to category
-                *) echo "Invalid. 1-5." ;;
+                2) sortVal="speed"; break ;;
+                3) sortVal="smartness"; break ;;
+                4) sortVal="newest"; break ;;
+                5) sortVal="popular"; break ;;
+                6) sortVal="downloaded"; break ;;
+                7|b|B) return 2 ;;
+                *) echo "Invalid. 1-7." ;;
             esac
         done
     fi
 
-    # Step 3: filter+sort+show
-    local resolved; resolved=$(resolve_sort_for_helper "$sortVal" "$category")
-    local helperCat="${resolved%%|*}"
-    local rest="${resolved#*|}"
-    local helperSort="${rest%%|*}"
-    local sortLabel="${rest#*|}"
+    # Step 3: fetch + sort + show
+    # 'speed' and 'smartness' are computed in shell (need ram/vram or composite math).
+    # Other sorts are pushed down to the helper.
+    local entries=() warnBanner="" sortLabel="" primaryKey=""
 
-    local helperArgs=("--catalog" "$CATALOG_JSON" "--sort" "$helperSort")
-    [[ "$helperCat" != "all" ]] && helperArgs+=("--category" "$helperCat")
+    if [[ "$sortVal" == "speed" || "$sortVal" == "smartness" ]]; then
+        local helperArgs=("--catalog" "$CATALOG_JSON")
+        [[ "$category" != "all" ]] && helperArgs+=("--category" "$category")
+        local raw=()
+        while IFS= read -r line; do raw+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
 
-    local entries=()
-    while IFS= read -r line; do entries+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
+        local prefixed=()
+        for line in "${raw[@]}"; do
+            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl <<< "$line"
+            local key=0
+            if [[ "$sortVal" == "speed" ]]; then
+                key=$(estimate_tok_sec "$sizeGiB" "$activeB" "$ramGiB" "$vramGiB")
+            else
+                local s; s=$(compute_smartness "$mmlu" "$lcb" "$gpqa")
+                key=${s:--1}
+            fi
+            prefixed+=("$key|$line")
+        done
+        # numeric-descending sort, then strip the prefix
+        while IFS= read -r line; do entries+=("${line#*|}"); done \
+            < <(printf '%s\n' "${prefixed[@]}" | sort -t'|' -k1,1 -n -r)
+
+        if [[ "$sortVal" == "speed" ]]; then
+            sortLabel="fastest on this machine (estimated tok/s)"
+        else
+            sortLabel="smartness composite (MMLU + LCB + GPQA averaged)"
+        fi
+    else
+        # Helper-driven sort path. Detect popular/downloaded with no live data.
+        local resolved; resolved=$(resolve_sort_for_helper "$sortVal" "$category")
+        local helperCat="${resolved%%|*}"
+        local rest="${resolved#*|}"
+        local helperSort="${rest%%|*}"
+        sortLabel="${rest#*|}"
+
+        if [[ "$sortVal" == "popular" || "$sortVal" == "downloaded" ]]; then
+            local field="$helperSort" probeArgs=("--catalog" "$CATALOG_JSON")
+            [[ "$helperCat" != "all" ]] && probeArgs+=("--category" "$helperCat")
+            local hasData=0
+            while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+                local val=""
+                [[ "$field" == "huggingfaceLikes" ]] && val="$hflikes"
+                [[ "$field" == "huggingfaceDownloads" ]] && val="$hfdl"
+                if [[ -n "$val" && "$val" != "-1" ]]; then hasData=1; break; fi
+            done < <("$PY_BIN" "$QUERY_HELPER" "${probeArgs[@]}")
+            if (( ! hasData )); then
+                warnBanner="$sortVal data not yet refreshed. Run 'python3 scripts/refresh-catalog.py' first. Falling back to MMLU-Pro."
+                helperSort="mmluPro"
+                sortLabel="MMLU-Pro (fallback - $sortVal data missing)"
+            fi
+        fi
+
+        # Set primary-bench star for benchmark ranking (not for newest/popular/downloaded).
+        case "$helperSort" in
+            mmluPro|liveCodeBench|gpqaDiamond|cyberMetric) primaryKey="$helperSort" ;;
+            *) primaryKey="" ;;
+        esac
+
+        local helperArgs=("--catalog" "$CATALOG_JSON" "--sort" "$helperSort")
+        [[ "$helperCat" != "all" ]] && helperArgs+=("--category" "$helperCat")
+        while IFS= read -r line; do entries+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
+    fi
 
     if (( ${#entries[@]} == 0 )); then
         echo "No models match. Bad sort?"
         return 1
     fi
 
-    printf '%s\n' "${entries[@]}" | show_entries "$ramGiB" "$vramGiB" "$sortLabel"
+    printf '%s\n' "${entries[@]}" | show_entries "$ramGiB" "$vramGiB" "$sortLabel" "$primaryKey" "$warnBanner"
 
     while true; do
         read -r -p "Pick a number 1-${#entries[@]} ('b' back, 'q' quit): " sel

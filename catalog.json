@@ -23,9 +23,15 @@
       "totalB": 1,
       "releaseDate": "2024-09-25",
       "quantPenalty": 4,
-      "benchmarks": { "mmluPro": 17, "liveCodeBench": 5, "gpqaDiamond": 12, "bfcl": 24, "cyberMetric": null },
-      "good": "ultra-fast on any hw, basic chat",
-      "bad": "shallow knowledge, weak code"
+      "benchmarks": {
+        "mmluPro": 17,
+        "liveCodeBench": 5,
+        "gpqaDiamond": 12,
+        "bfcl": 24,
+        "cyberMetric": null
+      },
+      "good": "Runs at 25-60 tok/s on any laptop, even with a weak GPU. Use it for quick lookups, simple drafting, and as a fallback when larger models are too slow.",
+      "bad": "Only 1B parameters means shallow world knowledge and hallucinations on anything niche. Code generation rarely produces working snippets beyond toy examples."
     },
     {
       "id": "qwen3-1.7b",
@@ -45,9 +51,15 @@
       "totalB": 1.7,
       "releaseDate": "2025-04-29",
       "quantPenalty": 4,
-      "benchmarks": { "mmluPro": 38, "liveCodeBench": 14, "gpqaDiamond": 23, "bfcl": 45, "cyberMetric": null },
-      "good": "ultra-fast, latest Qwen tiny",
-      "bad": "limited reasoning, poor at multi-step tasks"
+      "benchmarks": {
+        "mmluPro": 38,
+        "liveCodeBench": 14,
+        "gpqaDiamond": 23,
+        "bfcl": 45,
+        "cyberMetric": null
+      },
+      "good": "Newest-generation 1.7B Qwen, best-in-class at this size for instruction following. Fast enough for tight loops on a CPU-only machine.",
+      "bad": "Can't sustain multi-step reasoning or hold long-context conversations. Skip for any agentic tool-use that needs more than 2 hops."
     },
     {
       "id": "qwen3-4b-instruct",
@@ -67,9 +79,15 @@
       "totalB": 4,
       "releaseDate": "2025-07-25",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 46, "liveCodeBench": 22, "gpqaDiamond": 30, "bfcl": 56, "cyberMetric": null },
-      "good": "daily chat, snappy, 8 GiB-RAM friendly",
-      "bad": "shallow on niche topics, weak coder"
+      "benchmarks": {
+        "mmluPro": 46,
+        "liveCodeBench": 22,
+        "gpqaDiamond": 30,
+        "bfcl": 56,
+        "cyberMetric": null
+      },
+      "good": "Sweet spot for 8 GiB-RAM laptops: snappy daily chat, decent broad knowledge, fits comfortably in any GPU. Good first-stop for general-purpose use.",
+      "bad": "Niche/technical questions get shallow answers. Code generation works for simple snippets but struggles with multi-file edits or unusual frameworks."
     },
     {
       "id": "qwen3-4b-thinking",
@@ -89,9 +107,15 @@
       "totalB": 4,
       "releaseDate": "2025-07-25",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 58, "liveCodeBench": 28, "gpqaDiamond": 48, "bfcl": 50, "cyberMetric": null },
-      "good": "math/logic via chain-of-thought",
-      "bad": "thinking overhead slows replies, weak code"
+      "benchmarks": {
+        "mmluPro": 58,
+        "liveCodeBench": 28,
+        "gpqaDiamond": 48,
+        "bfcl": 50,
+        "cyberMetric": null
+      },
+      "good": "Punches above its size on math and logic puzzles via chain-of-thought reasoning traces. Useful when you need correctness over speed at the 4B tier.",
+      "bad": "Thinking blocks make every reply 3-5x slower than the Instruct variant. Verbose output, weak at code generation specifically."
     },
     {
       "id": "llama32-3b",
@@ -111,9 +135,15 @@
       "totalB": 3,
       "releaseDate": "2024-09-25",
       "quantPenalty": 4,
-      "benchmarks": { "mmluPro": 31, "liveCodeBench": 13, "gpqaDiamond": 28, "bfcl": 50, "cyberMetric": null },
-      "good": "broad world knowledge for size, follow instr.",
-      "bad": "older training, weak code"
+      "benchmarks": {
+        "mmluPro": 31,
+        "liveCodeBench": 13,
+        "gpqaDiamond": 28,
+        "bfcl": 50,
+        "cyberMetric": null
+      },
+      "good": "Strong instruction-following from Meta's training, with broader world knowledge per parameter than most 3B models. Good for general chat and structured outputs.",
+      "bad": "Older training cutoff (mid-2024) shows on recent topics. Code generation is weak; better choices exist at the 5+ GiB size class."
     },
     {
       "id": "phi4-14b",
@@ -133,9 +163,15 @@
       "totalB": 14,
       "releaseDate": "2024-12-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 70, "liveCodeBench": 40, "gpqaDiamond": 56, "bfcl": 60, "cyberMetric": null },
-      "good": "punches well above 14B for math/reasoning, MIT-licensed",
-      "bad": "narrower training corpus, can be terse on creative work"
+      "benchmarks": {
+        "mmluPro": 70,
+        "liveCodeBench": 40,
+        "gpqaDiamond": 56,
+        "bfcl": 60,
+        "cyberMetric": null
+      },
+      "good": "Microsoft's reasoning-focused 14B punches at 32B-class scores on MMLU-Pro and math benchmarks. MIT-licensed, strong for STEM and structured analysis.",
+      "bad": "Trained on a narrow synthetic-heavy corpus, so creative writing and casual chat feel terse. Function-calling support is weaker than Qwen/Llama lineages."
     },
     {
       "id": "qwen3-8b",
@@ -155,9 +191,15 @@
       "totalB": 8,
       "releaseDate": "2025-04-29",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 52, "liveCodeBench": 28, "gpqaDiamond": 36, "bfcl": 60, "cyberMetric": null },
-      "good": "balanced chat + code, fast on 8 GiB VRAM",
-      "bad": "not as deep as 14B+ for hard reasoning"
+      "benchmarks": {
+        "mmluPro": 52,
+        "liveCodeBench": 28,
+        "gpqaDiamond": 36,
+        "bfcl": 60,
+        "cyberMetric": null
+      },
+      "good": "Best balance of capability vs speed at the 8B class: deep enough for substantive coding help, fast enough to fit fully in 8 GiB VRAM at decent context.",
+      "bad": "Reaches its ceiling on hard reasoning problems where 14B+ models pull ahead. Less specialized than the Coder variant for pure code work."
     },
     {
       "id": "qwen35-9b",
@@ -177,9 +219,15 @@
       "totalB": 9,
       "releaseDate": "2025-11-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 56, "liveCodeBench": 30, "gpqaDiamond": 39, "bfcl": 62, "cyberMetric": null },
-      "good": "all-around, latest Qwen3.5 training, broad knowledge",
-      "bad": "generic; not specialized for code/research"
+      "benchmarks": {
+        "mmluPro": 56,
+        "liveCodeBench": 30,
+        "gpqaDiamond": 39,
+        "bfcl": 62,
+        "cyberMetric": null
+      },
+      "good": "Latest Qwen3.5 training (Nov 2025) means fresher world knowledge than 3.0-era models. Strong all-around generalist for a single 6 GiB GPU.",
+      "bad": "Generic instruction-tuning means no specialty edge — Coder beats it for code, Thinking beats it for math. Use when you want a balanced default."
     },
     {
       "id": "llama31-8b",
@@ -199,9 +247,15 @@
       "totalB": 8,
       "releaseDate": "2024-07-23",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 37, "liveCodeBench": 22, "gpqaDiamond": 30, "bfcl": 64, "cyberMetric": null },
-      "good": "Meta lineage, strong tool use, broad knowledge",
-      "bad": "early-2025 training (older), weaker on Asian langs"
+      "benchmarks": {
+        "mmluPro": 37,
+        "liveCodeBench": 22,
+        "gpqaDiamond": 30,
+        "bfcl": 64,
+        "cyberMetric": null
+      },
+      "good": "Meta lineage with the broadest tool-use ecosystem (function-calling JSON schemas, agent loops). Strong for retrieval-augmented chat and multi-turn assistants.",
+      "bad": "Mid-2024 training cutoff is showing. Weaker on Asian languages and recent libraries; many newer 8B models score higher on code/reasoning."
     },
     {
       "id": "hermes3-8b",
@@ -221,9 +275,15 @@
       "totalB": 8,
       "releaseDate": "2024-08-15",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 39, "liveCodeBench": 23, "gpqaDiamond": 31, "bfcl": 67, "cyberMetric": null },
-      "good": "very steerable, neutral system prompts, top-tier tool use",
-      "bad": "not abliterated; built on older Llama-3.1 base"
+      "benchmarks": {
+        "mmluPro": 39,
+        "liveCodeBench": 23,
+        "gpqaDiamond": 31,
+        "bfcl": 67,
+        "cyberMetric": null
+      },
+      "good": "NousResearch fine-tune of Llama-3.1: highly steerable, neutral system prompts, excellent BFCL function-calling scores. Great agent-loop driver.",
+      "bad": "Not formally abliterated — still has some safety tuning that can refuse edge cases. Built on the older Llama-3.1 base."
     },
     {
       "id": "dolphin3-llama-8b",
@@ -243,9 +303,15 @@
       "totalB": 8,
       "releaseDate": "2024-12-30",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 38, "liveCodeBench": 24, "gpqaDiamond": 30, "bfcl": 62, "cyberMetric": null },
-      "good": "uncensored-by-finetune, friendly persona, solid for assistants",
-      "bad": "not formal abliteration; still has soft refusals on edge topics"
+      "benchmarks": {
+        "mmluPro": 38,
+        "liveCodeBench": 24,
+        "gpqaDiamond": 30,
+        "bfcl": 62,
+        "cyberMetric": null
+      },
+      "good": "Cognitive Computations fine-tune that's friendly, uncensored-by-finetune, and tuned for assistant personas. Plays well with Open WebUI's chat interface.",
+      "bad": "Not formally abliterated, so soft refusals occasionally surface. Older Llama-3.1 base; superseded by Qwen3-8B for fresh deployments."
     },
     {
       "id": "granite32-8b",
@@ -265,9 +331,15 @@
       "totalB": 8,
       "releaseDate": "2025-02-26",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 46, "liveCodeBench": 27, "gpqaDiamond": 32, "bfcl": 70, "cyberMetric": null },
-      "good": "enterprise-grade, strong RAG/tool-use, Apache-2.0 license",
-      "bad": "conservative tuning; not for adversarial use cases"
+      "benchmarks": {
+        "mmluPro": 46,
+        "liveCodeBench": 27,
+        "gpqaDiamond": 32,
+        "bfcl": 70,
+        "cyberMetric": null
+      },
+      "good": "IBM Granite-3.2 with Apache-2.0 license is rare among 8B-class models. Top BFCL function-calling, strong RAG behavior, designed for enterprise pipelines.",
+      "bad": "Conservative tuning means it refuses adversarial security tasks more readily than peers. Use Foundation-Sec or WhiteRabbitNeo for offensive/red-team work."
     },
     {
       "id": "command-r",
@@ -287,9 +359,15 @@
       "totalB": 35,
       "releaseDate": "2024-08-30",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 46, "liveCodeBench": 24, "gpqaDiamond": 36, "bfcl": 78, "cyberMetric": null },
-      "good": "top-tier for grounded RAG, citations, multilingual",
-      "bad": "non-commercial license; older base"
+      "benchmarks": {
+        "mmluPro": 46,
+        "liveCodeBench": 24,
+        "gpqaDiamond": 36,
+        "bfcl": 78,
+        "cyberMetric": null
+      },
+      "good": "Cohere's grounded-generation flagship: top-tier for RAG with citations, multilingual responses, and complex retrieval pipelines. Strong tool-calling.",
+      "bad": "Non-commercial license is restrictive for production. Older base (Aug 2024); benchmarks have been overtaken by Qwen3 / Llama-3.3 at similar size."
     },
     {
       "id": "qwen3-14b",
@@ -309,9 +387,15 @@
       "totalB": 14,
       "releaseDate": "2025-04-29",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 61, "liveCodeBench": 38, "gpqaDiamond": 42, "bfcl": 66, "cyberMetric": null },
-      "good": "deeper reasoning than 8B, still partial-GPU",
-      "bad": "spills out of 8 GiB VRAM, slower than A3B MoEs"
+      "benchmarks": {
+        "mmluPro": 61,
+        "liveCodeBench": 38,
+        "gpqaDiamond": 42,
+        "bfcl": 66,
+        "cyberMetric": null
+      },
+      "good": "Step up from 8B in reasoning depth — handles longer chain-of-thought and more complex multi-step instructions before drift. Still partial-GPU on 8 GiB cards.",
+      "bad": "Spills out of 8 GiB VRAM, forcing CPU offload that slows it relative to the A3B MoEs. Dense architecture means every weight is bandwidth-bound."
     },
     {
       "id": "gemma3-12b",
@@ -331,9 +415,15 @@
       "totalB": 12,
       "releaseDate": "2025-03-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 52, "liveCodeBench": 30, "gpqaDiamond": 36, "bfcl": 56, "cyberMetric": null },
-      "good": "vision-capable, multilingual, strong knowledge per param",
-      "bad": "weaker function-calling than Qwen/Llama"
+      "benchmarks": {
+        "mmluPro": 52,
+        "liveCodeBench": 30,
+        "gpqaDiamond": 36,
+        "bfcl": 56,
+        "cyberMetric": null
+      },
+      "good": "Google's Gemma-3 has the strongest multilingual and vision-capable tooling at this size. Knowledge per parameter is unusually high.",
+      "bad": "Function-calling behavior is weaker than Qwen/Llama; can drift on long agent loops. Native vision support requires the full multimodal model variant."
     },
     {
       "id": "deepseek-r1-distill-llama-8b",
@@ -353,9 +443,15 @@
       "totalB": 8,
       "releaseDate": "2025-01-20",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 50, "liveCodeBench": 38, "gpqaDiamond": 49, "bfcl": 50, "cyberMetric": null },
-      "good": "math/reasoning punches above 8B via R1 traces",
-      "bad": "verbose thinking; slower per reply"
+      "benchmarks": {
+        "mmluPro": 50,
+        "liveCodeBench": 38,
+        "gpqaDiamond": 49,
+        "bfcl": 50,
+        "cyberMetric": null
+      },
+      "good": "Distilled from DeepSeek-R1 traces — math/reasoning scores rival 32B dense models. Surprisingly strong on GPQA Diamond at this size class.",
+      "bad": "Generates verbose <think> blocks that can 5x token output and slow effective replies. Not for low-latency chat or code completion."
     },
     {
       "id": "deepseek-r1-distill-qwen-32b",
@@ -375,9 +471,15 @@
       "totalB": 32,
       "releaseDate": "2025-01-20",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 70, "liveCodeBench": 57, "gpqaDiamond": 62, "bfcl": 60, "cyberMetric": null },
-      "good": "best-in-class small-host reasoning, GPQA ~62",
-      "bad": "thinking overhead; dense 32B is bandwidth-bound"
+      "benchmarks": {
+        "mmluPro": 70,
+        "liveCodeBench": 57,
+        "gpqaDiamond": 62,
+        "bfcl": 60,
+        "cyberMetric": null
+      },
+      "good": "Best-in-class small-host reasoning model — GPQA ~62 and MMLU-Pro ~70 from a single 19 GiB file. Excellent for hard analysis and math problems.",
+      "bad": "Thinking overhead means real wall-clock latency is high. Dense 32B is bandwidth-bound; A3B MoEs feel snappier despite lower headline scores."
     },
     {
       "id": "deepseek-coder-v2-lite-16b",
@@ -397,9 +499,15 @@
       "totalB": 16,
       "releaseDate": "2024-06-17",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 44, "liveCodeBench": 38, "gpqaDiamond": 28, "bfcl": 60, "cyberMetric": null },
-      "good": "MoE 2.4B-active = fast coder; strong HumanEval ~84",
-      "bad": "older training; weak on multi-file refactors"
+      "benchmarks": {
+        "mmluPro": 44,
+        "liveCodeBench": 38,
+        "gpqaDiamond": 28,
+        "bfcl": 60,
+        "cyberMetric": null
+      },
+      "good": "MoE with only 2.4B active parameters — runs at 8B-class speed but has 16B of code knowledge. Strong HumanEval ~84, good for fast code completion.",
+      "bad": "Older 2024 training shows on libraries newer than Q3 2024. Multi-file refactoring and large-context edits are weaker than Qwen3-Coder."
     },
     {
       "id": "yi-coder-9b",
@@ -419,9 +527,15 @@
       "totalB": 9,
       "releaseDate": "2024-09-04",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 38, "liveCodeBench": 28, "gpqaDiamond": 22, "bfcl": 50, "cyberMetric": null },
-      "good": "lightweight strong coder, HumanEval ~85",
-      "bad": "older base, narrow general knowledge"
+      "benchmarks": {
+        "mmluPro": 38,
+        "liveCodeBench": 28,
+        "gpqaDiamond": 22,
+        "bfcl": 50,
+        "cyberMetric": null
+      },
+      "good": "Lightweight specialist coder from 01.ai, HumanEval ~85 in just ~5 GiB. Fits 8 GiB VRAM with room to spare for a long context window.",
+      "bad": "Older Yi-1.5 base means general knowledge outside code is shallow. Skip for chat or research; use only when you specifically want code throughput."
     },
     {
       "id": "codestral-22b",
@@ -441,9 +555,15 @@
       "totalB": 22,
       "releaseDate": "2024-05-29",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 49, "liveCodeBench": 48, "gpqaDiamond": 32, "bfcl": 55, "cyberMetric": null },
-      "good": "Mistral coder, fill-in-the-middle support",
-      "bad": "non-commercial license; older base"
+      "benchmarks": {
+        "mmluPro": 49,
+        "liveCodeBench": 48,
+        "gpqaDiamond": 32,
+        "bfcl": 55,
+        "cyberMetric": null
+      },
+      "good": "Mistral's dedicated code model with fill-in-the-middle support — feels native in IDE completions. Strong on standard languages (Python/JS/Go/Rust).",
+      "bad": "Non-commercial license blocks production use. Older training (May 2024); Qwen3-Coder 30B-A3B beats it on LiveCodeBench while running faster."
     },
     {
       "id": "mistral-small-3-24b",
@@ -463,9 +583,15 @@
       "totalB": 24,
       "releaseDate": "2025-01-30",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 58, "liveCodeBench": 35, "gpqaDiamond": 42, "bfcl": 65, "cyberMetric": null },
-      "good": "Apache-2.0, strong general + tool-calling, fast for size",
-      "bad": "not coder-tuned; weaker than Qwen3 on math"
+      "benchmarks": {
+        "mmluPro": 58,
+        "liveCodeBench": 35,
+        "gpqaDiamond": 42,
+        "bfcl": 65,
+        "cyberMetric": null
+      },
+      "good": "Apache-2.0 24B with strong general + tool-calling at MoE-rivaling speeds (every weight active but well-optimized). Solid default for self-hosted assistants.",
+      "bad": "Not coder-tuned, so it's middle-of-pack for code generation. Math and reasoning trail Qwen3-Thinking 30B at similar VRAM cost."
     },
     {
       "id": "qwen25-coder-32b",
@@ -485,9 +611,15 @@
       "totalB": 32,
       "releaseDate": "2024-11-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 55, "liveCodeBench": 52, "gpqaDiamond": 40, "bfcl": 65, "cyberMetric": null },
-      "good": "SOTA dense coder pre-Qwen3, deep code knowledge, HumanEval ~92",
-      "bad": "every weight active = slow on small RAM"
+      "benchmarks": {
+        "mmluPro": 55,
+        "liveCodeBench": 52,
+        "gpqaDiamond": 40,
+        "bfcl": 65,
+        "cyberMetric": null
+      },
+      "good": "Pre-Qwen3 SOTA dense coder, HumanEval ~92 and deep code knowledge across languages. Reliable for serious refactoring and multi-file edits.",
+      "bad": "Every one of 32B weights activates per token = bandwidth-bound and slow on small RAM. The 3B-active Qwen3-Coder MoEs are 5x faster for similar quality."
     },
     {
       "id": "qwen35-27b",
@@ -507,9 +639,15 @@
       "totalB": 27,
       "releaseDate": "2025-11-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 64, "liveCodeBench": 40, "gpqaDiamond": 46, "bfcl": 66, "cyberMetric": null },
-      "good": "strong general dense, deeper than 14B, latest Qwen3.5",
-      "bad": "dense = bandwidth-bound; A3B MoEs faster"
+      "benchmarks": {
+        "mmluPro": 64,
+        "liveCodeBench": 40,
+        "gpqaDiamond": 46,
+        "bfcl": 66,
+        "cyberMetric": null
+      },
+      "good": "Latest Qwen3.5 training in a dense 27B form factor. Stronger general knowledge than the 14B with similar latency on a 24 GiB-RAM box.",
+      "bad": "Dense architecture means every weight per token, so it's 3-5x slower than A3B MoE alternatives. Pick the 30B-A3B Instruct unless you specifically want dense."
     },
     {
       "id": "gemma3-27b",
@@ -529,9 +667,15 @@
       "totalB": 27,
       "releaseDate": "2025-03-12",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 62, "liveCodeBench": 38, "gpqaDiamond": 45, "bfcl": 60, "cyberMetric": null },
-      "good": "best-in-class multilingual + vision dense 27B",
-      "bad": "weaker function-calling than Qwen/Llama"
+      "benchmarks": {
+        "mmluPro": 62,
+        "liveCodeBench": 38,
+        "gpqaDiamond": 45,
+        "bfcl": 60,
+        "cyberMetric": null
+      },
+      "good": "Best-in-class multilingual + vision dense 27B — knowledge per parameter rivals 70B-class models on non-English benchmarks.",
+      "bad": "Function-calling is weaker than Qwen/Llama, hurting agentic loops. Vision capabilities require the multimodal variant, not the GGUF chat-only quant."
     },
     {
       "id": "llama33-70b",
@@ -551,9 +695,15 @@
       "totalB": 70,
       "releaseDate": "2024-12-06",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 68, "liveCodeBench": 44, "gpqaDiamond": 50, "bfcl": 75, "cyberMetric": null },
-      "good": "Meta lineage 70B, top tool-use, broad world knowledge",
-      "bad": "needs 48+ GiB; dense = slow on 16 GiB hosts"
+      "benchmarks": {
+        "mmluPro": 68,
+        "liveCodeBench": 44,
+        "gpqaDiamond": 50,
+        "bfcl": 75,
+        "cyberMetric": null
+      },
+      "good": "Meta lineage 70B with top-tier function-calling (BFCL ~75). Excellent for agentic workflows that need broad world knowledge and tool reliability.",
+      "bad": "Needs 48+ GiB RAM to run cleanly; on a 16 GiB host you'll page-thrash. Dense architecture means every token is full-model bandwidth — slow on consumer hardware."
     },
     {
       "id": "qwen30-coder-q4",
@@ -573,9 +723,15 @@
       "totalB": 30,
       "releaseDate": "2025-08-04",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 58, "liveCodeBench": 62, "gpqaDiamond": 42, "bfcl": 75, "cyberMetric": null },
-      "good": "code + agent loops, MoE 3B active = fast",
-      "bad": "not as deep as 80B coder; less general world knowledge"
+      "benchmarks": {
+        "mmluPro": 58,
+        "liveCodeBench": 62,
+        "gpqaDiamond": 42,
+        "bfcl": 75,
+        "cyberMetric": null
+      },
+      "good": "Coder-tuned 30B-A3B MoE — only 3B active per token = fast even when streaming from disk. Strong HumanEval and good agentic tool-use scores.",
+      "bad": "Less general world knowledge than the Instruct variant — don't ask it to write essays. Smaller-than-80B coder for substantial multi-file refactors."
     },
     {
       "id": "qwen3-30b-instruct",
@@ -595,9 +751,15 @@
       "totalB": 30,
       "releaseDate": "2025-07-25",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 62, "liveCodeBench": 45, "gpqaDiamond": 44, "bfcl": 70, "cyberMetric": null },
-      "good": "general chat, balanced, 3B active = fast",
-      "bad": "not specialized; weaker than coder for code, weaker than thinking for math"
+      "benchmarks": {
+        "mmluPro": 62,
+        "liveCodeBench": 45,
+        "gpqaDiamond": 44,
+        "bfcl": 70,
+        "cyberMetric": null
+      },
+      "good": "Balanced 30B-A3B for general chat and assistant work. The 3B active-param footprint makes it feel as fast as an 8B dense model.",
+      "bad": "Not specialized — Coder beats it for code, Thinking beats it for math. Pick this when you want one model that does everything decently."
     },
     {
       "id": "qwen3-30b-thinking",
@@ -617,9 +779,15 @@
       "totalB": 30,
       "releaseDate": "2025-07-25",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 70, "liveCodeBench": 50, "gpqaDiamond": 58, "bfcl": 65, "cyberMetric": null },
-      "good": "hard reasoning, math, multi-step research",
-      "bad": "thinking blocks slow replies; verbose"
+      "benchmarks": {
+        "mmluPro": 70,
+        "liveCodeBench": 50,
+        "gpqaDiamond": 58,
+        "bfcl": 65,
+        "cyberMetric": null
+      },
+      "good": "Thinking variant excels at hard reasoning problems and multi-step research tasks. Generates <think> chains before answering for accuracy gains.",
+      "bad": "Thinking overhead makes replies 3-5x slower than Instruct; not for interactive chat. Verbose output can blow context budgets on long conversations."
     },
     {
       "id": "qwen36-35b",
@@ -639,9 +807,15 @@
       "totalB": 35,
       "releaseDate": "2026-04-15",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 65, "liveCodeBench": 48, "gpqaDiamond": 47, "bfcl": 72, "cyberMetric": null },
-      "good": "newest training, 3B active = fast",
-      "bad": "not Coder-tuned; less specialized"
+      "benchmarks": {
+        "mmluPro": 65,
+        "liveCodeBench": 48,
+        "gpqaDiamond": 47,
+        "bfcl": 72,
+        "cyberMetric": null
+      },
+      "good": "Newest Qwen training (Apr 2026) with the A3B speed envelope. Best general 35B-class quality available with abliterated weights.",
+      "bad": "Not Coder-tuned — middle-of-pack for serious code work. Larger size than 30B variants for marginal quality gain unless you have the RAM headroom."
     },
     {
       "id": "coder-80b-iq2",
@@ -661,9 +835,15 @@
       "totalB": 80,
       "releaseDate": "2025-09-12",
       "quantPenalty": 9,
-      "benchmarks": { "mmluPro": 62, "liveCodeBench": 70, "gpqaDiamond": 48, "bfcl": 80, "cyberMetric": null },
-      "good": "80B brain for code+agents via NVMe streaming",
-      "bad": "cold prompts slow on tight RAM, IQ2 quality dip"
+      "benchmarks": {
+        "mmluPro": 62,
+        "liveCodeBench": 70,
+        "gpqaDiamond": 48,
+        "bfcl": 80,
+        "cyberMetric": null
+      },
+      "good": "Crown jewel for coding agents on small hardware: 80B coder brain at IQ2_XXS streams from NVMe with only 3B active per token, hitting ~10-15 tok/s on 16 GiB hosts.",
+      "bad": "Cold prompts are slow on tight RAM (~5-6 tok/s) until the page cache warms. IQ2 quality dip means slightly more refactoring errors than IQ3/Q4."
     },
     {
       "id": "instruct-80b-iq2",
@@ -683,9 +863,15 @@
       "totalB": 80,
       "releaseDate": "2025-09-12",
       "quantPenalty": 9,
-      "benchmarks": { "mmluPro": 70, "liveCodeBench": 50, "gpqaDiamond": 52, "bfcl": 75, "cyberMetric": null },
-      "good": "80B general chat, broad knowledge",
-      "bad": "not coder-tuned; weaker on code edits"
+      "benchmarks": {
+        "mmluPro": 70,
+        "liveCodeBench": 50,
+        "gpqaDiamond": 52,
+        "bfcl": 75,
+        "cyberMetric": null
+      },
+      "good": "80B general-purpose chat at MoE-streaming speed. MMLU-Pro ~70 and BFCL ~75 — strong for research, broad-knowledge Q&A, and tool-using assistants.",
+      "bad": "Not coder-tuned: code edits surface bugs the Coder variant catches. Long-context grounding is weaker than dedicated RAG models like Command-R."
     },
     {
       "id": "thinking-80b-iq2",
@@ -705,9 +891,15 @@
       "totalB": 80,
       "releaseDate": "2025-09-12",
       "quantPenalty": 9,
-      "benchmarks": { "mmluPro": 75, "liveCodeBench": 55, "gpqaDiamond": 62, "bfcl": 70, "cyberMetric": null },
-      "good": "80B reasoning + autonomous tool use",
-      "bad": "thinking overhead = long latency per reply"
+      "benchmarks": {
+        "mmluPro": 75,
+        "liveCodeBench": 55,
+        "gpqaDiamond": 62,
+        "bfcl": 70,
+        "cyberMetric": null
+      },
+      "good": "GRPO-Uncensored thinking variant — 80B reasoning + autonomous tool use at NVMe-streaming speed. GPQA Diamond ~62 rivals proprietary frontier models.",
+      "bad": "Thinking blocks make latency-per-reply long; expect 30-90 sec for non-trivial questions. Not for chat-style conversation; use Instruct for that."
     },
     {
       "id": "coder-80b-iq3",
@@ -727,9 +919,15 @@
       "totalB": 80,
       "releaseDate": "2025-09-12",
       "quantPenalty": 5,
-      "benchmarks": { "mmluPro": 64, "liveCodeBench": 73, "gpqaDiamond": 50, "bfcl": 81, "cyberMetric": null },
-      "good": "80B coder higher quality than IQ2",
-      "bad": "needs 24+ GiB or page-thrashes"
+      "benchmarks": {
+        "mmluPro": 64,
+        "liveCodeBench": 73,
+        "gpqaDiamond": 50,
+        "bfcl": 81,
+        "cyberMetric": null
+      },
+      "good": "Higher-fidelity 80B coder than IQ2 — closer to Q4 quality at half the disk size. Fewer refactoring errors and better edge-case handling.",
+      "bad": "Needs 24+ GiB RAM to avoid page-thrashing. Larger download (~31 GB) and slower cold prompts than IQ2_XXS."
     },
     {
       "id": "coder-80b-q4",
@@ -749,9 +947,15 @@
       "totalB": 80,
       "releaseDate": "2025-09-12",
       "quantPenalty": 2,
-      "benchmarks": { "mmluPro": 66, "liveCodeBench": 76, "gpqaDiamond": 51, "bfcl": 82, "cyberMetric": null },
-      "good": "80B coder full Q4 quality",
-      "bad": "needs 56+ GiB; below that = slow page-thrashing"
+      "benchmarks": {
+        "mmluPro": 66,
+        "liveCodeBench": 76,
+        "gpqaDiamond": 51,
+        "bfcl": 82,
+        "cyberMetric": null
+      },
+      "good": "Reference Q4 quality for the 80B Coder family — barely-noticeable degradation from full precision. Use when you want the best possible local code agent.",
+      "bad": "Needs 56+ GiB RAM for clean operation; on 16-32 GiB hosts the IQ2/IQ3 quants are dramatically faster despite small quality cost."
     },
     {
       "id": "glm-air-106b",
@@ -771,9 +975,15 @@
       "totalB": 106,
       "releaseDate": "2025-07-29",
       "quantPenalty": 2,
-      "benchmarks": { "mmluPro": 73, "liveCodeBench": 55, "gpqaDiamond": 60, "bfcl": 78, "cyberMetric": null },
-      "good": "SOTA agentic research, deep multi-source synth",
-      "bad": "12B active = bandwidth-bound; needs 64+ GiB"
+      "benchmarks": {
+        "mmluPro": 73,
+        "liveCodeBench": 55,
+        "gpqaDiamond": 60,
+        "bfcl": 78,
+        "cyberMetric": null
+      },
+      "good": "Top-of-class agentic research model: 106B-A12B MoE with deep multi-source synthesis and citation behavior. Strong on long-context tool loops.",
+      "bad": "12B active params = bandwidth-bound, so even with adequate RAM it runs 2-4x slower than the 80B-A3B family. Needs 64+ GiB RAM minimum."
     },
     {
       "id": "qwen35-122b",
@@ -793,9 +1003,15 @@
       "totalB": 122,
       "releaseDate": "2025-11-12",
       "quantPenalty": 2,
-      "benchmarks": { "mmluPro": 76, "liveCodeBench": 60, "gpqaDiamond": 62, "bfcl": 80, "cyberMetric": null },
-      "good": "biggest abliterated Qwen, deep general knowledge",
-      "bad": "10B active = slow even with adequate RAM"
+      "benchmarks": {
+        "mmluPro": 76,
+        "liveCodeBench": 60,
+        "gpqaDiamond": 62,
+        "bfcl": 80,
+        "cyberMetric": null
+      },
+      "good": "Biggest abliterated Qwen3.5 with 10B active params — deepest general knowledge available locally. Sharded across 8 GGUFs (~74 GB total).",
+      "bad": "10B active = slow tok/s even with 80 GiB RAM. The 80B-A3B family is more practical for daily use; pull this only when you specifically need 122B depth."
     },
     {
       "id": "qwen3-235b-a22b",
@@ -815,9 +1031,15 @@
       "totalB": 235,
       "releaseDate": "2025-04-29",
       "quantPenalty": 9,
-      "benchmarks": { "mmluPro": 80, "liveCodeBench": 70, "gpqaDiamond": 65, "bfcl": 82, "cyberMetric": null },
-      "good": "frontier 235B, 22B active = stronger than 80B but slower",
-      "bad": "needs 72+ GiB; IQ2 sharded = NVMe-bound"
+      "benchmarks": {
+        "mmluPro": 80,
+        "liveCodeBench": 70,
+        "gpqaDiamond": 65,
+        "bfcl": 82,
+        "cyberMetric": null
+      },
+      "good": "Frontier-class 235B with 22B active params — stronger than 80B on every benchmark. The most capable abliterated model available locally.",
+      "bad": "Needs 72+ GiB RAM and IQ2 sharded means NVMe-bound throughput. Plan ~3-5 tok/s on a 96 GiB box; not for interactive use."
     },
     {
       "id": "baronllm-cyber",
@@ -837,9 +1059,15 @@
       "totalB": 8,
       "releaseDate": "2024-11-20",
       "quantPenalty": 2,
-      "benchmarks": { "mmluPro": 35, "liveCodeBench": 22, "gpqaDiamond": 28, "bfcl": 45, "cyberMetric": 68 },
-      "good": "exploit dev, recon scripting, red-team scenarios",
-      "bad": "narrow training; bad at general/code outside security"
+      "benchmarks": {
+        "mmluPro": 35,
+        "liveCodeBench": 22,
+        "gpqaDiamond": 28,
+        "bfcl": 45,
+        "cyberMetric": 68
+      },
+      "good": "Offensive-security tuned: knows exploit dev patterns, recon scripting (nmap/nuclei flow), and red-team scenario writing. Q6_K quant retains nuance.",
+      "bad": "Narrow training corpus means general chat and code outside security are weak. Don't use for non-security work; pair with a generalist model."
     },
     {
       "id": "whiterabbitneo-7b",
@@ -859,9 +1087,15 @@
       "totalB": 7,
       "releaseDate": "2025-02-18",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 38, "liveCodeBench": 24, "gpqaDiamond": 30, "bfcl": 50, "cyberMetric": 65 },
-      "good": "cyber threat analysis, malware/network security",
-      "bad": "smaller than 30B+, narrow domain focus"
+      "benchmarks": {
+        "mmluPro": 38,
+        "liveCodeBench": 24,
+        "gpqaDiamond": 30,
+        "bfcl": 50,
+        "cyberMetric": 65
+      },
+      "good": "WhiteRabbitNeo V3 7B for cyber threat analysis, malware reverse-engineering, and network security questions. Fast enough for SOC analyst loops.",
+      "bad": "Smaller than the 13B/33B siblings means shallower analysis on novel attack chains. Narrow domain — won't replace a general assistant."
     },
     {
       "id": "whiterabbitneo-13b",
@@ -881,9 +1115,15 @@
       "totalB": 13,
       "releaseDate": "2025-02-18",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 44, "liveCodeBench": 30, "gpqaDiamond": 35, "bfcl": 55, "cyberMetric": 70 },
-      "good": "stronger cyber reasoning than 7B, exploit scripts, payload analysis",
-      "bad": "spills out of 8 GiB VRAM; partial GPU"
+      "benchmarks": {
+        "mmluPro": 44,
+        "liveCodeBench": 30,
+        "gpqaDiamond": 35,
+        "bfcl": 55,
+        "cyberMetric": 70
+      },
+      "good": "WhiteRabbitNeo V3 13B — meaningful step up over 7B for exploit script generation, payload analysis, and multi-stage attack reasoning.",
+      "bad": "Spills out of 8 GiB VRAM forcing partial GPU. Still too small for the deepest red-team scenarios where the 33B variant pulls ahead."
     },
     {
       "id": "whiterabbitneo-33b",
@@ -903,9 +1143,15 @@
       "totalB": 33,
       "releaseDate": "2025-02-18",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 52, "liveCodeBench": 38, "gpqaDiamond": 42, "bfcl": 60, "cyberMetric": 76 },
-      "good": "deep cyber reasoning, multi-step attack chains, longer context",
-      "bad": "dense 33B = bandwidth-bound; needs 24+ GiB"
+      "benchmarks": {
+        "mmluPro": 52,
+        "liveCodeBench": 38,
+        "gpqaDiamond": 42,
+        "bfcl": 60,
+        "cyberMetric": 76
+      },
+      "good": "Top of the WhiteRabbitNeo line: deep cyber reasoning, multi-step attack chain writing, and longer-context scenario planning. CyberMetric ~76.",
+      "bad": "Dense 33B is bandwidth-bound — needs 24+ GiB RAM and runs ~3-6 tok/s on a 16 GiB host. Slower than the 7B/13B for quick lookups."
     },
     {
       "id": "whiterabbitneo-2-8b",
@@ -925,9 +1171,15 @@
       "totalB": 8,
       "releaseDate": "2024-12-10",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 40, "liveCodeBench": 26, "gpqaDiamond": 32, "bfcl": 55, "cyberMetric": 67 },
-      "good": "Llama-3.1 base WRN-2, strong tool-use for cyber agents",
-      "bad": "older base than V3; superseded by V3-7B for new work"
+      "benchmarks": {
+        "mmluPro": 40,
+        "liveCodeBench": 26,
+        "gpqaDiamond": 32,
+        "bfcl": 55,
+        "cyberMetric": 67
+      },
+      "good": "Llama-3.1 base WRN-2 8B — strong tool-use for cyber agent workflows (recon → enum → exploit). Plays well with MCP/agent frameworks.",
+      "bad": "Older Llama-3.1 base than V3 series — superseded by V3-7B for fresh deployments. Keep only if you have agent code already calibrated to it."
     },
     {
       "id": "foundation-sec-8b",
@@ -947,9 +1199,15 @@
       "totalB": 8,
       "releaseDate": "2025-04-28",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 42, "liveCodeBench": 23, "gpqaDiamond": 33, "bfcl": 60, "cyberMetric": 73 },
-      "good": "Cisco-trained, threat intel + detection engineering, blue-team SOC",
-      "bad": "tuned defensive; less suitable for offensive scripting"
+      "benchmarks": {
+        "mmluPro": 42,
+        "liveCodeBench": 23,
+        "gpqaDiamond": 33,
+        "bfcl": 60,
+        "cyberMetric": 73
+      },
+      "good": "Cisco-trained for blue-team SOC work: threat intel synthesis, detection-engineering rule generation (Sigma/Splunk), MITRE ATT&CK mapping. CyberMetric ~73.",
+      "bad": "Tuned defensive — refuses many offensive/red-team prompts. Use WhiteRabbitNeo or BaronLLM for exploit dev; this is for defenders."
     },
     {
       "id": "lily-cyber-7b",
@@ -969,9 +1227,15 @@
       "totalB": 7,
       "releaseDate": "2024-04-28",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 32, "liveCodeBench": 18, "gpqaDiamond": 26, "bfcl": 40, "cyberMetric": 62 },
-      "good": "security Q&A, vuln explanations, MITRE ATT&CK mapping",
-      "bad": "older Mistral-7B base; weak on code generation"
+      "benchmarks": {
+        "mmluPro": 32,
+        "liveCodeBench": 18,
+        "gpqaDiamond": 26,
+        "bfcl": 40,
+        "cyberMetric": 62
+      },
+      "good": "Lily-Cybersecurity 7B v0.2 — strong for security Q&A, vulnerability explanations, and MITRE ATT&CK technique mapping. Fast on any 10 GiB-RAM box.",
+      "bad": "Older Mistral-7B base means weak general chat and poor code generation. Tightly scoped to security knowledge questions, not general tool-use."
     },
     {
       "id": "zysec-7b",
@@ -991,9 +1255,15 @@
       "totalB": 7,
       "releaseDate": "2024-03-04",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 30, "liveCodeBench": 16, "gpqaDiamond": 25, "bfcl": 38, "cyberMetric": 60 },
-      "good": "SOC ops, log triage, alert summarization",
-      "bad": "older Mistral base; superseded by Foundation-Sec for fresh deployments"
+      "benchmarks": {
+        "mmluPro": 30,
+        "liveCodeBench": 16,
+        "gpqaDiamond": 25,
+        "bfcl": 38,
+        "cyberMetric": 60
+      },
+      "good": "ZySec-AI tuned for SOC operations: log triage, alert summarization, IOC enrichment. Designed for high-volume security pipeline use.",
+      "bad": "Older Mistral base; superseded by Foundation-Sec-8B for fresh deployments. Pick only if you have ZySec-calibrated SOC playbooks already."
     },
     {
       "id": "llama-primus-instruct-8b",
@@ -1013,9 +1283,15 @@
       "totalB": 8,
       "releaseDate": "2025-02-27",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 41, "liveCodeBench": 22, "gpqaDiamond": 32, "bfcl": 58, "cyberMetric": 71 },
-      "good": "TrendMicro threat research, IOC/CTI, malware family ID",
-      "bad": "narrow training; weak general chat"
+      "benchmarks": {
+        "mmluPro": 41,
+        "liveCodeBench": 22,
+        "gpqaDiamond": 32,
+        "bfcl": 58,
+        "cyberMetric": 71
+      },
+      "good": "TrendMicro's threat-research model — IOC/CTI analysis, malware family identification, threat actor attribution. CyberMetric ~71.",
+      "bad": "Narrow training corpus means weak general chat. Combine with a generalist model for analyst workflows that mix CTI work and broad coding."
     },
     {
       "id": "llama-primus-base-8b",
@@ -1035,9 +1311,15 @@
       "totalB": 8,
       "releaseDate": "2025-02-27",
       "quantPenalty": 3,
-      "benchmarks": { "mmluPro": 38, "liveCodeBench": 18, "gpqaDiamond": 30, "bfcl": 50, "cyberMetric": 69 },
-      "good": "base completion model for fine-tuning on internal cyber data",
-      "bad": "no instruction tuning; not for direct chat use"
+      "benchmarks": {
+        "mmluPro": 38,
+        "liveCodeBench": 18,
+        "gpqaDiamond": 30,
+        "bfcl": 50,
+        "cyberMetric": 69
+      },
+      "good": "Base completion model designed for fine-tuning on internal cyber data — bring your own SOC tickets and produce a tuned defender model.",
+      "bad": "No instruction tuning — won't work as a chat assistant out of the box. Pick the Instruct variant unless you're running a fine-tuning pipeline."
     }
   ]
 }

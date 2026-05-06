@@ -17,7 +17,7 @@
 param(
     [string]$Model = "",
     [string]$ModelRepo = "",
-    [ValidateSet('','coding','general','reasoning','cyber-offense','cyber-defense','newest','popular','downloaded')]
+    [ValidateSet('','coding','general','reasoning','cyber-offense','cyber-defense','newest','popular','downloaded','speed','smartness')]
     [string]$Sort = "",
     [switch]$Pick,
     [switch]$DownloadOnly,
@@ -193,10 +193,23 @@ function Get-PrimaryBench($category) {
     }
 }
 
+# Composite "smartness" score: average of the three general benchmarks (MMLU-Pro,
+# LiveCodeBench, GPQA Diamond), each on 0-100. Returns $null if entry has none.
+function Get-Smartness($entry) {
+    $b = $entry.benchmarks
+    if (-not $b) { return $null }
+    $vals = @()
+    foreach ($k in 'mmluPro','liveCodeBench','gpqaDiamond') {
+        if ($b.PSObject.Properties[$k] -and $b.$k -ne $null) { $vals += [double]$b.$k }
+    }
+    if ($vals.Count -eq 0) { return $null }
+    return [int][Math]::Round(($vals | Measure-Object -Average).Average)
+}
+
 # Sort an array of catalog entries by the named sort key.
-# Sort keys: coding | general | reasoning | cyber | newest | popular | downloaded
+# Sort keys: coding | general | reasoning | cyber-offense | cyber-defense | newest | popular | downloaded | speed | smartness
 # Entries lacking a value sort to the end.
-function Sort-CatalogEntries($entries, $sortKey) {
+function Sort-CatalogEntries($entries, $sortKey, $ramGiBVal = 0, $vramGiBVal = 0) {
     $bench = $null
     switch ($sortKey) {
         'coding'        { $bench = 'liveCodeBench' }
@@ -204,6 +217,17 @@ function Sort-CatalogEntries($entries, $sortKey) {
         'reasoning'     { $bench = 'gpqaDiamond' }
         'cyber-offense' { $bench = 'cyberMetric' }
         'cyber-defense' { $bench = 'cyberMetric' }
+        'smartness'     {
+            return $entries | Sort-Object -Descending -Property @{Expression={
+                $s = Get-Smartness $_
+                if ($s -ne $null) { $s } else { -1 }
+            }}
+        }
+        'speed'         {
+            return $entries | Sort-Object -Descending -Property @{Expression={
+                Get-TokSecEstimate $_ $ramGiBVal $vramGiBVal
+            }}
+        }
         'newest'        {
             return $entries | Sort-Object -Descending -Property @{Expression={
                 if ($_.releaseDate) { [DateTime]::Parse($_.releaseDate) } else { [DateTime]::MinValue }
@@ -236,42 +260,102 @@ function Get-AgeDays($entry) {
     } catch { return $null }
 }
 
-# Format the benchmark line: "LCB:70 MMLU:62 GPQA:48 cyber:-"
-function Format-BenchLine($entry) {
-    $b = $entry.benchmarks
-    if (-not $b) { return "" }
-    $parts = @()
-    if ($b.liveCodeBench -ne $null) { $parts += "LCB:$($b.liveCodeBench)" } else { $parts += "LCB:-" }
-    if ($b.mmluPro -ne $null)       { $parts += "MMLU:$($b.mmluPro)" }       else { $parts += "MMLU:-" }
-    if ($b.gpqaDiamond -ne $null)   { $parts += "GPQA:$($b.gpqaDiamond)" }   else { $parts += "GPQA:-" }
-    if ($b.cyberMetric -ne $null)   { $parts += "cyber:$($b.cyberMetric)" }
-    return ($parts -join ' ')
+# Format an entry's age as a human string ("374 days ago", "2 yrs ago").
+function Format-Age($age) {
+    if ($age -eq $null) { return "release date unknown" }
+    if ($age -lt 30)   { return "$age days ago" }
+    if ($age -lt 365)  { return "{0} months ago" -f [int]($age / 30) }
+    return "{0:N1} years ago" -f ($age / 365)
 }
 
-function Show-CatalogEntries($entries, $ramGiBVal, $vramGiBVal, $sortLabel) {
+# Build the four-bench summary line, with a marker on the entry's primary bench.
+function Format-BenchLine($entry, $primaryKey) {
+    $b = $entry.benchmarks
+    if (-not $b) { return "" }
+    function _fmt($k, $label) {
+        $v = if ($b.PSObject.Properties[$k] -and $b.$k -ne $null) { $b.$k } else { '-' }
+        $marker = if ($k -eq $primaryKey) { '*' } else { ' ' }
+        "{0}{1} {2}" -f $marker, $label, $v
+    }
+    $parts = @(
+        (_fmt 'mmluPro'       'MMLU'),
+        (_fmt 'liveCodeBench' 'LCB'),
+        (_fmt 'gpqaDiamond'   'GPQA')
+    )
+    if ($b.cyberMetric -ne $null) { $parts += (_fmt 'cyberMetric' 'Cyber') }
+    return ($parts -join '  ')
+}
+
+# Wrap a long string at ~72 chars, indenting continuation lines.
+function Format-Wrapped($text, $width = 72, $indent = "              ") {
+    if (-not $text) { return @() }
+    $words = $text -split '\s+'
+    $lines = @()
+    $current = ""
+    foreach ($w in $words) {
+        if (("$current $w").Trim().Length -le $width) {
+            $current = ("$current $w").Trim()
+        } else {
+            if ($current) { $lines += $current }
+            $current = $w
+        }
+    }
+    if ($current) { $lines += $current }
+    return $lines
+}
+
+# Pretty-print one entry block.
+function Show-Entry($rank, $m, $ramGiBVal, $vramGiBVal, $primaryKey, $isTop) {
+    $s         = Get-ModelScore     $m $ramGiBVal
+    $tps       = Get-TokSecEstimate $m $ramGiBVal $vramGiBVal
+    $smart     = Get-Smartness $m
+    $age       = Get-AgeDays $m
+    $ageTxt    = Format-Age $age
+    $bench     = Format-BenchLine $m $primaryKey
+    $catLabel  = if ($m.category) { $m.category } else { "uncategorized" }
+    $fitWord   = switch ($s.Tag) { 'ok' { 'fits cleanly' } 'tight' { 'tight, NVMe streaming' } default { 'needs more RAM' } }
+    $rankBadge = if ($isTop) { ("#{0}  ★ best in {1}" -f $rank, $catLabel) } else { ("#{0}" -f $rank) }
+    $smartTxt  = if ($smart -ne $null) { ("smartness {0}/100" -f $smart) } else { "smartness n/a" }
+
+    Write-Host ""
+    Write-Host ("  {0}" -f $rankBadge) -ForegroundColor Yellow
+    Write-Host ("       {0,-50}  [{1}]" -f $m.name, $catLabel)
+    Write-Host ("       {0}  ~{1} t/s  -  {2}  -  released {3}" -f $s.Marker, $tps, $fitWord, $ageTxt) -ForegroundColor $s.Color
+    if ($bench) {
+        Write-Host ("       {0}    {1}" -f $bench, $smartTxt) -ForegroundColor DarkCyan
+    }
+    if ($m.good) {
+        Write-Host "       GOOD AT  " -NoNewline -ForegroundColor Green
+        $first = $true
+        foreach ($line in (Format-Wrapped $m.good 64 "                ")) {
+            if ($first) { Write-Host $line -ForegroundColor DarkGreen; $first = $false }
+            else        { Write-Host ("                " + $line) -ForegroundColor DarkGreen }
+        }
+    }
+    if ($m.bad) {
+        Write-Host "       WEAK AT  " -NoNewline -ForegroundColor DarkYellow
+        $first = $true
+        foreach ($line in (Format-Wrapped $m.bad 64 "                ")) {
+            if ($first) { Write-Host $line -ForegroundColor DarkGray; $first = $false }
+            else        { Write-Host ("                " + $line) -ForegroundColor DarkGray }
+        }
+    }
+}
+
+function Show-CatalogEntries($entries, $ramGiBVal, $vramGiBVal, $sortLabel, $primaryKey, $warnBanner = "") {
     Write-Host ""
     Write-Host ("Models (sorted by: {0}, RAM={1} GiB, VRAM={2} GiB):" -f $sortLabel, $ramGiBVal, $vramGiBVal) -ForegroundColor Cyan
+    if ($warnBanner) {
+        Write-Host ""
+        Write-Host ("  [!] {0}" -f $warnBanner) -ForegroundColor Yellow
+    }
     Write-Host "  [ok] fits cleanly  [~] tight (NVMe streaming)  [!] needs more RAM" -ForegroundColor DarkGray
-    Write-Host "  benchmarks are full-precision base; quants take a small hit (quantPenalty)" -ForegroundColor DarkGray
-    Write-Host ""
+    Write-Host "  benchmarks: full-precision base, quants take a small hit (see quantPenalty in catalog.json)" -ForegroundColor DarkGray
+    Write-Host "  '*' on a bench label = primary metric for the active sort" -ForegroundColor DarkGray
     $i = 0
     foreach ($m in $entries) {
         $i++
-        $s   = Get-ModelScore     $m $ramGiBVal
-        $tps = Get-TokSecEstimate $m $ramGiBVal $vramGiBVal
-        $bench = Format-BenchLine $m
-        $age = Get-AgeDays $m
-        $ageTxt = if ($age -ne $null) { " ${age}d old" } else { "" }
-        $tpsLabel = ("~{0,3} t/s" -f $tps)
-        $catLabel = if ($m.category) { ("[{0}]" -f $m.category) } else { "" }
-        Write-Host ("  [{0,2}] {1} {2}  {3,-15} {4}" -f $i, $s.Marker, $tpsLabel, $catLabel, $m.name) -ForegroundColor $s.Color
-        if ($bench) {
-            Write-Host ("         {0}{1}" -f $bench, $ageTxt) -ForegroundColor DarkCyan
-        }
-        if ($m.good) {
-            Write-Host ("         + {0}" -f $m.good) -ForegroundColor DarkGreen
-            Write-Host ("         - {0}" -f $m.bad)  -ForegroundColor DarkGray
-        }
+        Show-Entry $i $m $ramGiBVal $vramGiBVal $primaryKey ($i -eq 1)
     }
     Write-Host ""
 }
@@ -316,22 +400,26 @@ function Select-Sort($category) {
     $bench = Get-PrimaryBench $category
     Write-Host ""
     Write-Host "Sort by:" -ForegroundColor Cyan
-    Write-Host ("  [1] performance ({0}, default)" -f $bench)
-    Write-Host  "  [2] newest first"
-    Write-Host  "  [3] most popular   (HuggingFace likes - run scripts/refresh-catalog.py first)"
-    Write-Host  "  [4] most downloaded (HuggingFace downloads - run scripts/refresh-catalog.py first)"
-    Write-Host  "  [5] back"
+    Write-Host ("  [1] smartest in {0,-15} ({1}, default)" -f $category, $bench)
+    Write-Host  "  [2] fastest on this machine    (estimated tok/s, descending)"
+    Write-Host  "  [3] smartest overall           (composite of MMLU-Pro + LCB + GPQA)"
+    Write-Host  "  [4] newest first"
+    Write-Host  "  [5] most popular               (HF likes - refresh-catalog.py first)"
+    Write-Host  "  [6] most downloaded            (HF downloads - refresh-catalog.py first)"
+    Write-Host  "  [7] back"
     while ($true) {
-        $sel = Read-Host "Pick (1-5)"
-        if ($sel -eq '5' -or $sel -eq 'b' -or $sel -eq 'B') { return $null }
+        $sel = Read-Host "Pick (1-7)"
+        if ($sel -eq '7' -or $sel -eq 'b' -or $sel -eq 'B') { return $null }
         switch ($sel) {
             '1' { return $category }
             ''  { return $category }
-            '2' { return 'newest' }
-            '3' { return 'popular' }
-            '4' { return 'downloaded' }
+            '2' { return 'speed' }
+            '3' { return 'smartness' }
+            '4' { return 'newest' }
+            '5' { return 'popular' }
+            '6' { return 'downloaded' }
         }
-        Write-Host "Invalid. 1-5." -ForegroundColor Yellow
+        Write-Host "Invalid. 1-7." -ForegroundColor Yellow
     }
 }
 
@@ -350,9 +438,44 @@ function Select-Model($ramGiBVal, $vramGiBVal, $preselectedSort = "") {
 
     # Step 3: filter + sort + show
     $entries = if ($category -eq 'all') { $Catalog } else { $Catalog | Where-Object { $_.category -eq $category } }
-    $entries = @(Sort-CatalogEntries $entries $sortKey)
-    $sortLabel = if ($sortKey -in @('newest','popular','downloaded')) { $sortKey } else { (Get-PrimaryBench $category) + " (higher = better)" }
-    Show-CatalogEntries $entries $ramGiBVal $vramGiBVal $sortLabel
+
+    # Detect popular/downloaded with no live data and warn + fall back
+    $warnBanner = ""
+    $effectiveSort = $sortKey
+    if ($sortKey -eq 'popular' -or $sortKey -eq 'downloaded') {
+        $field = if ($sortKey -eq 'popular') { 'huggingfaceLikes' } else { 'huggingfaceDownloads' }
+        $hasData = $false
+        foreach ($e in $entries) {
+            if ($e.PSObject.Properties[$field] -and $null -ne $e.$field) { $hasData = $true; break }
+        }
+        if (-not $hasData) {
+            $warnBanner = "$sortKey data not yet refreshed. Run 'python scripts/refresh-catalog.py' first. Falling back to MMLU-Pro."
+            $effectiveSort = 'general'
+        }
+    }
+
+    $entries = @(Sort-CatalogEntries $entries $effectiveSort $ramGiBVal $vramGiBVal)
+
+    $sortLabel = switch ($effectiveSort) {
+        'speed'      { 'fastest on this machine (estimated tok/s)' }
+        'smartness'  { 'smartness composite (MMLU + LCB + GPQA averaged)' }
+        'newest'     { 'newest first' }
+        'popular'    { 'HuggingFace likes' }
+        'downloaded' { 'HuggingFace downloads' }
+        default      { (Get-PrimaryBench $category) + ' (higher = better)' }
+    }
+
+    # Primary bench for the '*' marker on the bench line
+    $primaryKey = switch ($effectiveSort) {
+        'speed'      { '' }
+        'smartness'  { '' }
+        'newest'     { '' }
+        'popular'    { '' }
+        'downloaded' { '' }
+        default      { Get-PrimaryBench $category }
+    }
+
+    Show-CatalogEntries $entries $ramGiBVal $vramGiBVal $sortLabel $primaryKey $warnBanner
 
     while ($true) {
         $sel = Read-Host "Pick a number 1-$($entries.Count) ('b' back, 'q' quit)"
