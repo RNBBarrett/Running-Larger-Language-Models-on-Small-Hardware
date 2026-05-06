@@ -1,26 +1,98 @@
-# Running larger language models on small hardware
+# Running Larger Language Models on Small Hardware
 
-A cross-platform script that **figures out what your machine can actually run, presents a curated catalog of abliterated MoE models filtered against your specs, launches the best fit with auto-tuned flags, and measures real-world throughput**. Built on `llama.cpp` + Open WebUI + MCP tools.
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078d4)](https://learn.microsoft.com/powershell/)
+[![Platform: Linux](https://img.shields.io/badge/platform-Linux-fcc624?logo=linux&logoColor=black)](#linux--macos-bash)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-000?logo=apple)](#macos-setup-expectations)
+[![llama.cpp](https://img.shields.io/badge/inference-llama.cpp-blue)](https://github.com/ggml-org/llama.cpp)
+[![Open WebUI](https://img.shields.io/badge/UI-Open%20WebUI-success)](https://github.com/open-webui/open-webui)
+[![MCP](https://img.shields.io/badge/tools-MCP-purple)](https://modelcontextprotocol.io/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
-Works on **Windows**, **Linux**, and **macOS** — same logic on each.
+> **Run an 80B-parameter LLM on a machine with 8 GB VRAM and 16 GB RAM** — fully local, abliterated (uncensored), with web search and a chat UI. One script auto-detects your hardware, picks an appropriate model from a curated catalog, applies every relevant `llama.cpp` efficiency, and benchmarks the result on your machine.
+>
+> **Inspiration**: [Running a 35B AI Model on 6GB VRAM, FAST (llama.cpp Guide)](https://youtu.be/8F_5pdcD3HY) — a YouTube walkthrough showing how `llama.cpp`'s expert-offload trick lets a 35B MoE run on a tiny GPU. **This repo replicates that approach on different hardware (AMD RDNA 1 instead of NVIDIA, 8 GB VRAM instead of 6) and pushes it further: a full 80B-parameter MoE running locally with autonomous tool use.**
 
-## The core idea
+## The mission
 
-Most "run an LLM locally" guides hardcode flags for a specific machine and a specific model. They break the moment your hardware isn't theirs. This stack inverts the flow:
+The [source video](https://youtu.be/8F_5pdcD3HY) demonstrates a clever technique: with `llama.cpp`'s `--n-cpu-moe` (and the more granular `--override-tensor` flag), a Mixture-of-Experts model can keep its small dense layers on the GPU while streaming the huge expert weights from system RAM/disk. Because only a few experts fire per token, the GPU stays the bottleneck for compute and the disk only handles a fraction of the weights — even though the model file is bigger than VRAM.
 
-```
-1. Detect       — query VRAM, RAM, CPU, disk
-2. Recommend    — score a curated catalog of abliterated MoE GGUFs
-                  against the detected RAM (`[ok]` / `[~]` / `[!]`)
-3. Choose       — interactive picker, or pass -Model
-4. Auto-tune    — context, KV cache type, batch sizes, expert offload,
-                  --mlock — all derived from detected specs
-5. Launch       — llama-server + Open WebUI + MCPO (6 free tools)
-6. Measure      — `-Benchmark` flag prints actual cold + warm tok/s
-                  on YOUR machine
-```
+The video runs **35B params on 6 GB VRAM**. We set out to:
 
-The script encodes years' worth of community knowledge about which `llama.cpp` flags work where, what tradeoffs apply at each VRAM/RAM tier, and which model architectures stream efficiently from NVMe. You don't have to know any of that — run it and the right thing happens.
+1. **Replicate it** on different hardware (AMD RDNA 1, which has no ROCm support on Windows)
+2. **Push further**: an **80B-parameter** MoE on 8 GB VRAM, not 35B on 6
+3. **Make it work for anyone**: instead of hardcoding flags, write one script that detects the user's hardware, presents a tier-appropriate model catalog, applies the right efficiencies automatically, and measures actual tok/s on their machine
+4. **Add agentic tooling**: web search, fetch, Wikipedia, persistent memory — all free, all local, all callable by the model
+
+Result: this repo. The same script that runs an 80B MoE on a 16 GB / 8 GB VRAM box will run a 4B model on a 16 GB Mac mini, GLM-4.5-Air on a 64 GB workstation, or a Qwen3.5-122B on an 80 GB / 32 GB-VRAM rig — same code path, different auto-tuned flags, different catalog entries marked `[ok]` vs `[~]` vs `[!]`.
+
+## How the efficiencies stack up
+
+Each technique in this list does one specific thing. Combined, they're what lets the same model run usefully on hardware that "shouldn't" handle it. The script applies whichever ones make sense for your detected specs.
+
+### 1. Vulkan backend (vendor-agnostic GPU acceleration)
+
+**What it does**: routes `llama.cpp`'s GPU compute through the Vulkan API instead of CUDA / ROCm / Metal.
+**Why it matters**: works on any GPU with Vulkan 1.2+ drivers — NVIDIA, AMD (including older RDNA 1 cards with no ROCm support on Windows), Intel Arc. Roughly 80–90% of CUDA's perf for inference. The reference baseline machine (RDNA 1) has no other GPU-acceleration option on Windows.
+
+### 2. MoE expert offload via `--override-tensor "exps=CPU"`
+
+**What it does**: a regex-based flag that tells `llama.cpp` exactly which tensors live where. We send only the routed-expert tensors to CPU/disk; shared experts, attention layers, and dense FFN stay on GPU.
+**Why it matters**: the magic at the heart of the source video. A 80B MoE has ~75 GB of weights at Q4 — but only ~3 GB fire per token (the "active params"). Pushing experts off-GPU means the GPU only holds the ~5 GB of weights that fire on every token, leaving the other 70 GB in cheap CPU/disk territory. More granular than `--n-cpu-moe N` (which is layer-bucket based).
+
+### 3. NVMe expert streaming via `mmap`
+
+**What it does**: the model file is memory-mapped instead of being loaded into RAM. The OS pages individual experts in on demand from disk, caches what's hot, and evicts what's cold.
+**Why it matters**: this is what lets a 21 GB model run on 16 GB RAM. With Gen4 NVMe (~7 GB/s sequential), pulling in cold experts costs ~1–2 ms per page-fault. After warmup, the working set settles into RAM cache. Combined with `-ot exps=CPU` above: dense layers on GPU, hot experts in RAM cache, cold experts on disk, all transparently coordinated by the OS.
+
+### 4. Hybrid SSM + MoE architecture (Qwen3-Next)
+
+**What it does**: the Qwen3-Next family uses **Gated Delta Net** — only 12 of 48 layers do traditional attention; the rest use linear/recurrent state updates.
+**Why it matters**: KV cache scales linearly with attention-layer count × token count. Traditional dense-attention models eat your 8 GB VRAM with KV cache before you reach 32K context. Qwen3-Next's hybrid design means **8K context costs ~100 MB of KV cache, 128K costs ~1.6 GB, full 262K costs ~3 GB** — you can run native long-context on a small GPU. This is the architecture-level efficiency that separates "kinda works" from "actually usable."
+
+### 5. A3B active params (Qwen3-Next 80B-A3B specifically)
+
+**What it does**: of 80B total parameters, only 3B activate per token (32 of 512 experts × ~150M params each).
+**Why it matters**: working-set RAM = active_params × bytes_per_param. At Q4 (~0.5 bytes/param), A3B's per-token working set is just ~1.5 GB. Even on 16 GB RAM with the OS using ~6 GB for itself + llama-server, a 1.5 GB working set comfortably fits in the page cache. **An A22B model on the same hardware would thrash and run at 1 tok/s.** Picking the right active-param count for your hardware is the difference between "runs" and "runs well."
+
+### 6. imatrix-calibrated quantization (IQ2_XXS, mradermacher i1)
+
+**What it does**: instead of uniform quantization, allocate more bits to weights that matter more, calibrated against an importance matrix derived from real text.
+**Why it matters**: lets us run an 80B model at ~2.5 bits/param (~21 GB on disk) without catastrophic quality collapse. Plain Q2_K loses noticeably more quality at the same size. The community-standard imatrix quants (mradermacher's `i1-` prefix) are the SOTA at this size tier.
+
+### 7. KV-cache quantization (`--cache-type-k q8_0 --cache-type-v q8_0`)
+
+**What it does**: stores K/V cache at 8-bit precision instead of FP16.
+**Why it matters**: halves KV-cache VRAM usage with imperceptible quality impact. Lets us fit 8K context on 8 GB VRAM that otherwise would max out at 4K.
+
+### 8. Tuned batch sizing (`-b 2048 -ub 2048` on RDNA 1, more elsewhere)
+
+**What it does**: controls how many tokens prefill processes per step. Bigger batches = faster prefill but bigger compute buffers.
+**Why it matters**: prefill speed dominates time-to-first-token, especially with agentic tools that send 4–9k token system prompts every turn. RDNA 1 caps Vulkan host-pinned allocations around 2 GB, so `-ub 4096` OOMs but `-ub 2048` works and roughly doubles prefill speed. Bigger GPUs auto-tune higher.
+
+### 9. `--flash-attn on`
+
+**What it does**: enables Flash Attention's fused attention kernels.
+**Why it matters**: meaningful end-to-end speedup on Vulkan in current `llama.cpp` builds with negligible quality impact.
+
+### 10. `--mlock` when RAM has headroom
+
+**What it does**: pins model pages so the OS can't evict them.
+**Why it matters**: only enabled when total RAM > model size + 8 GiB headroom. On constrained RAM (where the model exceeds RAM), pinning would fail; on headroom-rich RAM, pinning eliminates the cold-cache cliff entirely.
+
+### 11. Auto-tuning based on detected specs
+
+**What it does**: the script queries VRAM (via `llama-server --list-devices`), RAM (`Win32_ComputerSystem` / `sysctl` / `free`), CPU, disk, and picks every flag from a tuning matrix based on those values.
+**Why it matters**: no two machines are alike. A user with 32 GB RAM gets `--mlock` for free. A user with 24 GB VRAM gets `-c 32768 --cache-type-k f16 -ub 4096`. A user on Apple Silicon gets unified-memory treatment. The same source script delivers good results on a 16 GB laptop or a 64 GB workstation.
+
+### 12. MCPO bridge for tool use
+
+**What it does**: wraps stdio-based MCP servers (web fetch, search, Wikipedia, arXiv, etc.) as REST endpoints Open WebUI can register as Tools.
+**Why it matters**: gives the model **autonomous web access** without paying for an API. Six tools wired up by default: fetch (any URL), DuckDuckGo (web search), Wikipedia, arXiv (papers), time/date, persistent memory. All free, all local, no API keys.
+
+### 13. Runtime-regenerated MCPO config
+
+**What it does**: the MCPO config is rewritten by the launch script every time, with absolute paths derived from `$env:USERPROFILE` / `$HOME`.
+**Why it matters**: makes the repo fully portable. No machine-specific paths get committed. New users clone and run — paths self-resolve to whatever their system uses.
 
 ## What's in the catalog
 
@@ -67,7 +139,12 @@ Run flow:
 
 ## Quick start
 
-**Windows** (PowerShell, from this directory):
+**Windows** (Command Prompt or double-click in Explorer):
+```cmd
+.\start.cmd
+```
+
+The `.cmd` wrapper invokes PowerShell with `-ExecutionPolicy Bypass` so you don't need to change your system policy. If you prefer running PowerShell directly:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
@@ -90,6 +167,7 @@ Add `-Benchmark` (or `--benchmark`) on launch and the script will fire a cold + 
 
 | File | Platform | What it does |
 |---|---|---|
+| **`start.cmd`** | Windows | Tiny wrapper that invokes `start.ps1` with `-ExecutionPolicy Bypass` so users don't have to change their PowerShell policy. Passes flags through unchanged. |
 | **`start.ps1`** | Windows | Detects hardware via WMI + llama-server probe; resolves model from catalog or `-Model`; auto-tunes llama.cpp flags; regenerates MCPO config with current paths; launches llama-server + Open WebUI + MCPO each in its own window. |
 | **`start.sh`** | Linux + macOS | Same logic in bash. Detects via `nvidia-smi` / `rocm-smi` / `system_profiler`. On Apple Silicon, treats unified memory as VRAM and enables `--mlock`. Runs services as `nohup` background jobs with logs in `~/tools/logs/`. |
 | **`README.md`** | — | This file. |
@@ -300,3 +378,34 @@ Both scripts honor these env vars (set before running):
 | `DATA_DIR` | Where Open WebUI keeps its DB / cache (default: `$TOOLS_DIR/open-webui-data`) |
 | `LOCAL_TZ` | IANA timezone name for `mcp-server-time` (default: detected, falls back to UTC) |
 | `MODEL`, `MODEL_REPO` | Skip the picker and use a specific GGUF |
+
+## Inspiration & credit
+
+The expert-offload technique at the heart of this stack comes from [**Running a 35B AI Model on 6GB VRAM, FAST (llama.cpp Guide)**](https://youtu.be/8F_5pdcD3HY) — a YouTube walkthrough of `llama.cpp`'s MoE expert-offload trick. Massive credit to the video author; this repo is a reusable, hardware-aware, cross-platform expansion of the same idea.
+
+Other open-source projects this stack stands on:
+- [`llama.cpp`](https://github.com/ggml-org/llama.cpp) — the inference engine
+- [Open WebUI](https://github.com/open-webui/open-webui) — chat interface
+- [MCPO](https://github.com/open-webui/mcpo) — MCP-to-OpenAPI bridge
+- [HuggingFace Hub](https://huggingface.co/) — model hosting (especially [mradermacher](https://huggingface.co/mradermacher), [huihui-ai](https://huggingface.co/huihui-ai), [Unsloth](https://huggingface.co/unsloth) for GGUF + abliteration work)
+- [Anthropic's MCP](https://modelcontextprotocol.io/) — the tool protocol
+
+## License
+
+MIT — do whatever you want with this. If you ship something neat built on top, a link back is appreciated but not required.
+
+## Topics
+
+If you fork or reuse this, tag your repo with these on GitHub (Settings → About → Topics) so others can find it:
+
+```
+llama-cpp  local-llm  abliterated-llm  uncensored-llm  mixture-of-experts  moe
+qwen3  qwen3-next  qwen3-coder  gguf  vulkan  amd-gpu  intel-arc  apple-silicon
+low-vram  8gb-vram  expert-offload  mmap-streaming  nvme-llm  long-context
+mcp  model-context-protocol  open-webui  mcpo  ai-agent  coding-agent
+self-hosted-ai  privacy-first  offline-llm  windows  linux  macos
+```
+
+### Search keywords
+
+For anyone landing here from search: this project covers running **Qwen3-Next 80B-A3B**, **Qwen3-Coder-Next**, **Qwen3.5-122B-A10B**, **GLM-4.5-Air**, and other large abliterated MoE models locally on **constrained hardware** (8 GB VRAM, 16 GB RAM, AMD RDNA 1, Intel Arc, Apple Silicon). It uses `llama.cpp` Vulkan, expert offload, NVMe streaming, KV cache quantization, and MCP-based tools to fit a private, uncensored, agentic LLM stack on hardware that "shouldn't" be able to run it.
