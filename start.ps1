@@ -625,11 +625,18 @@ if ($Benchmark) {
 }
 
 # ---------- 9. Done ----------
-Section "Ready"
-Write-Host "Chat:  http://127.0.0.1:3000  (Open WebUI)"
-Write-Host "API:   http://127.0.0.1:8088/v1  (OpenAI-compatible)"
-Write-Host "Tools: http://127.0.0.1:8091     (MCP-as-OpenAPI)"
 Write-Host ""
-Write-Host "Switch model:    .\start.ps1 -Pick"
-Write-Host "Measure perf:    .\start.ps1 -Benchmark"
-Write-Host "Stop all:        Get-Process llama-server,open-webui,mcpo | Stop-Process -Force"
+Write-Host "================================================================" -ForegroundColor Green
+Write-Host "  CHAT IS HERE:  http://127.0.0.1:3000" -ForegroundColor Green
+Write-Host "================================================================" -ForegroundColor Green
+Write-Host "  Open the URL above in your browser to start chatting." -ForegroundColor Cyan
+Write-Host "  (Open WebUI may take ~30 sec to bind on first launch.)" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "Other endpoints:"
+Write-Host "  API:    http://127.0.0.1:8088/v1   (OpenAI-compatible - for Aider, opencode, etc.)"
+Write-Host "  Tools:  http://127.0.0.1:8091      (MCP-as-OpenAPI - fetch/search/wiki/arxiv/time/memory)"
+Write-Host ""
+Write-Host "Useful commands:"
+Write-Host "  Switch model:    .\start.cmd -Pick"
+Write-Host "  Measure perf:    .\start.cmd -Benchmark"
+Write-Host "  Stop all:        Get-Process llama-server,open-webui,mcpo | Stop-Process -Force"

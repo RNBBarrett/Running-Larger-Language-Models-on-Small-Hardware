@@ -645,11 +645,17 @@ fi
 
 # ---------- 9. Done ----------
 echo
-echo "=== Ready ==="
-echo "Chat:  http://127.0.0.1:3000"
-echo "API:   http://127.0.0.1:8088/v1"
-echo "Tools: http://127.0.0.1:8091"
+echo "================================================================"
+echo "  CHAT IS HERE:  http://127.0.0.1:3000"
+echo "================================================================"
+echo "  Open the URL above in your browser to start chatting."
+echo "  (Open WebUI may take ~30 sec to bind on first launch.)"
 echo
-echo "Switch model:    ./start.sh --pick"
-echo "Measure perf:    ./start.sh --benchmark"
-echo "Stop all:        pkill -f 'llama-server|open-webui|mcpo'"
+echo "Other endpoints:"
+echo "  API:    http://127.0.0.1:8088/v1   (OpenAI-compatible - for Aider, opencode, etc.)"
+echo "  Tools:  http://127.0.0.1:8091      (MCP-as-OpenAPI - fetch/search/wiki/arxiv/time/memory)"
+echo
+echo "Useful commands:"
+echo "  Switch model:    ./start.sh --pick"
+echo "  Measure perf:    ./start.sh --benchmark"
+echo "  Stop all:        pkill -f 'llama-server|open-webui|mcpo'"
