@@ -96,17 +96,26 @@ Each technique in this list does one specific thing. Combined, they're what lets
 
 ## What's in the catalog
 
-Eleven abliterated models spanning four hardware tiers. The picker scores each against your detected RAM and shows which will fit comfortably (`[ok]`), which will stream from disk slowly (`[~]`), and which won't run usefully (`[!]`).
+**47 entries** spanning seven hardware tiers (sub-2B → 235B), organized into five categories with first-class **cybersecurity-specific models**. The full list lives in [`catalog.json`](catalog.json) — both `start.ps1` and `start.sh` load it at runtime, so adding a model is one PR away. The picker scores each entry against your detected RAM (`[ok]` / `[~]` / `[!]`) and **ranks by benchmark inside the category you pick**.
 
-| Tier | Min RAM | Models |
+Categories:
+
+| Category | What it's for | Sample entries |
 |---|---|---|
-| **Tiny** | 8 GiB | Qwen3-4B-Instruct abliterated |
-| **Small** | 10–16 GiB | Qwen3.5-9B abliterated · Qwen3-Coder-30B-A3B abliterated · Qwen3.6-35B-A3B abliterated |
-| **Medium (NVMe streaming)** | 16+ GiB | Qwen3-Coder-Next 80B-A3B (IQ2) · Qwen3-Next 80B-A3B Instruct (IQ2) · Qwen3-Next 80B-A3B Thinking (IQ2) |
-| **Large** | 24–56 GiB | Qwen3-Coder-Next 80B-A3B (IQ3 / Q4_K_M) |
-| **Frontier** | 64–80 GiB | GLM-4.5-Air abliterated (106B-A12B) · Qwen3.5-122B-A10B abliterated (sharded) |
+| **coding** | code generation, agentic tool-use | Qwen3-Coder-Next 80B (IQ2/IQ3/Q4) · Qwen3-Coder 30B-A3B · Qwen2.5-Coder-32B · Codestral-22B · DeepSeek-Coder-V2-Lite · Yi-Coder-9B |
+| **general** | daily chat, broad knowledge | Qwen3-1.7B/4B/8B/14B · Llama-3.1/3.2/3.3 · Mistral-Small-3 · Gemma-3 12B/27B · Granite-3.2 · Command-R · Hermes-3 · Dolphin-3.0 |
+| **reasoning** | math, multi-step logic, research | Qwen3-Thinking 4B/30B/80B · DeepSeek-R1-Distill (Llama-8B / Qwen-32B) · Phi-4 14B · GLM-4.5-Air 106B |
+| **cyber-offense** | exploit dev, recon, red-team | WhiteRabbitNeo-V3 7B/13B/33B · Llama-3.1-WRN-2 8B · BaronLLM Offensive Security |
+| **cyber-defense** | threat intel, SOC, detections | Cisco Foundation-Sec 8B · Lily-Cybersecurity 7B · ZySec-7B · TrendMicro Llama-Primus Base/Instruct 8B |
 
-Pick by use case — coder variants for agentic tool-use, instruct for general chat, thinking for reasoning, GLM-Air for research. The picker shows you the names and tags so you don't need to memorize this table.
+Each catalog entry carries:
+- **Hardware fit**: `sizeGiB`, `minRamGiB`, `activeB`, `tier` — drives the `[ok]/[~]/[!]` marker and tok/s estimate
+- **Performance benchmarks**: `mmluPro`, `liveCodeBench`, `gpqaDiamond`, `cyberMetric` (full-precision base scores) + `quantPenalty` so you can see realistic numbers for the quant we ship
+- **Vintage**: `releaseDate` and (after running `scripts/refresh-catalog.py`) live `huggingfaceLikes` / `huggingfaceDownloads`
+- **Mirror map**: `repo` (HuggingFace), `originalRepo`, `modelscopeRepo` — `scripts/download.py` probes mirrors for 5 sec, picks the fastest, and downloads via parallel `hf_transfer`
+- **Plain-English fit**: `good` / `bad` strings the picker shows below each entry
+
+Pick a use case → pick a sort (performance / newest / popular / downloaded) → pick the entry. The picker handles the filtering and ranking for you so you don't memorize anything.
 
 ## Reference run — proving the loop on a constrained machine
 
@@ -203,8 +212,12 @@ Add `-Benchmark` (or `--benchmark`) on launch and the script will fire a cold + 
 | File | Platform | What it does |
 |---|---|---|
 | **`start.cmd`** | Windows | Tiny wrapper that invokes `start.ps1` with `-ExecutionPolicy Bypass` so users don't have to change their PowerShell policy. Passes flags through unchanged. |
-| **`start.ps1`** | Windows | Detects hardware via WMI + llama-server probe; resolves model from catalog or `-Model`; auto-tunes llama.cpp flags; regenerates MCPO config with current paths; launches llama-server + Open WebUI + MCPO each in its own window. |
+| **`start.ps1`** | Windows | Detects hardware via WMI + llama-server probe; loads `catalog.json`; resolves model from catalog or `-Model`; auto-tunes llama.cpp flags; regenerates MCPO config with current paths; launches llama-server + Open WebUI + MCPO each in its own window. |
 | **`start.sh`** | Linux + macOS | Same logic in bash. Detects via `nvidia-smi` / `rocm-smi` / `system_profiler`. On Apple Silicon, treats unified memory as VRAM and enables `--mlock`. Runs services as `nohup` background jobs with logs in `~/tools/logs/`. |
+| **`catalog.json`** | — | Source of truth for the model catalog (47 entries with benchmarks, release dates, mirror repos). Both launchers load it at runtime; add a model with one PR. |
+| **`scripts/download.py`** | — | GGUF downloader. Probes `huggingface.co` and `hf-mirror.com` for ~5 sec to gauge throughput, picks the faster one, then runs the full pull via `hf_transfer` (parallel chunked, ~10x stock speed). Falls back to `aria2c` if installed. |
+| **`scripts/refresh-catalog.py`** | — | Hits the HuggingFace API to refresh `huggingfaceLikes` / `huggingfaceDownloads` per entry in `catalog.json`. Run before sorting by `popular` or `downloaded`. |
+| **`scripts/_catalog_query.py`** | — | Internal helper — emits filtered + sorted catalog rows as pipe-delimited lines for `start.sh` to consume. |
 | **`README.md`** | — | This file. |
 | **`.gitignore`** | — | Excludes downloaded `.gguf` files (the scripts pull them on demand, no need to commit ~20 GB of weights). |
 
@@ -213,7 +226,8 @@ Both scripts share the same flag conventions:
 | Windows | Linux/macOS | Effect |
 |---|---|---|
 | `-Model "<id\|file>"` | `--model "<id\|file>"` | Use a specific catalog entry (by id) or GGUF filename |
-| `-Pick` | `--pick` | Force the interactive catalog picker |
+| `-Pick` | `--pick` | Force the interactive catalog picker (use case → sort → entry) |
+| `-Sort <key>` | `--sort <key>` | Pre-pick a sort: `coding` / `general` / `reasoning` / `cyber-offense` / `cyber-defense` / `newest` / `popular` / `downloaded`. Skips the second prompt. |
 | `-Benchmark` | `--benchmark` | After services come up, fire a cold + warm prompt and report tok/s |
 | `-DownloadOnly` | `--download-only` | Fetch the model and exit |
 | `-OnlyLlama` | `--only-llama` | Start only llama-server (skip Open WebUI + MCPO) |

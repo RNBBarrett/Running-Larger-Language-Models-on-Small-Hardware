@@ -20,12 +20,14 @@ ONLY_LLAMA=0
 FORCE=0
 PICK=0
 BENCHMARK=0
+SORT=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --model)         MODEL="$2"; shift 2 ;;
         --model-repo)    MODEL_REPO="$2"; shift 2 ;;
         --pick)          PICK=1; shift ;;
+        --sort)          SORT="$2"; shift 2 ;;
         --download-only) DOWNLOAD_ONLY=1; shift ;;
         --only-llama)    ONLY_LLAMA=1; shift ;;
         --force)         FORCE=1; shift ;;
@@ -37,41 +39,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ---------- Curated abliterated model catalog ----------
-# Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|tag
-CATALOG=(
-# ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
-"qwen3-4b-instruct|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + fast, daily chat on weak hw"
-"qwen3-4b-thinking|Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + reasoning chain-of-thought"
-"llama32-3b|Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)|mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|2|6|smallest viable, instruction following"
-
-# ====== TIER 2: Small dense (10-12 GiB RAM, 5-9 GB on disk) ======
-"qwen3-8b|Qwen3-8B abliterated  Q4_K_M (~5 GB)|mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|5|10|dense 8B, balanced"
-"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|newer dense 9B, all-around"
-"llama31-8b|Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)|mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|5|10|Meta lineage, broad knowledge"
-"qwen3-14b|Qwen3-14B abliterated  Q4_K_M (~9 GB)|mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|9|14|dense 14B, more capable than 8B"
-
-# ====== TIER 3: Medium dense (16-24 GiB RAM, 17-20 GB on disk) ======
-"qwen25-coder-32b|Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|19|20|dense coder, every weight active"
-"qwen35-27b|Qwen3.5-27B abliterated  Q4_K_M (~17 GB)|mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|17|20|dense 27B, general purpose"
-
-# ====== TIER 4: Small MoE A3B (12-16 GiB RAM, 19-22 GB on disk) - 3B active = fast even when streaming ======
-"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|code MoE, 3B active = fast"
-"qwen3-30b-instruct|Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|19|12|general chat MoE, 3B active"
-"qwen3-30b-thinking|Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|19|12|reasoning MoE with chain-of-thought"
-"qwen36-35b|Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)|mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|22|16|newer training, MoE 3B active"
-
-# ====== TIER 5: 80B-A3B (NVMe-streaming territory, 16+ GiB RAM, 20-50 GB on disk) ======
-"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|80B brain code+agents via NVMe streaming"
-"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|80B general chat via NVMe streaming"
-"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|80B research/reasoning, autonomous tools"
-"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|80B coder higher quality (24+ GiB)"
-"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|80B coder full Q4 (56+ GiB)"
-
-# ====== TIER 6: 100B+ frontier (64-80 GiB RAM, 60-80 GB on disk) ======
-"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|106B-A12B, agentic research benchmark leader"
-"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen, 122B/A10B"
-)
+# ---------- Catalog: loaded from catalog.json via scripts/_catalog_query.py ----------
+HERE_PRE="$(cd "$(dirname "$0")" && pwd)"
+CATALOG_JSON="$HERE_PRE/catalog.json"
+QUERY_HELPER="$HERE_PRE/scripts/_catalog_query.py"
+PY_BIN=""
+for c in python3 python; do
+    if command -v "$c" >/dev/null 2>&1; then PY_BIN="$c"; break; fi
+done
 
 # Returns: 0=ok 1=tight 2=no
 score_model() {
@@ -81,55 +56,222 @@ score_model() {
     return 0
 }
 
-show_catalog() {
-    local ramGiBVal=$1
+# Echoes a marker [ok]/[~]/[!] for a given minRam vs current RAM.
+mark_for_ram() {
+    local minRam=$1 ram=$2
+    if (( $(awk "BEGIN{print ($ram < $minRam - 4)}") )); then echo "[!] "; return; fi
+    if (( $(awk "BEGIN{print ($ram < $minRam + 4)}") )); then echo "[~] "; return; fi
+    echo "[ok]"
+}
+
+# Estimate tok/s — same logic as start.ps1's Get-TokSecEstimate.
+# args: sizeGiB activeB ramGiB vramGiB
+estimate_tok_sec() {
+    awk -v sz="$1" -v ab="$2" -v ram="$3" -v vram="$4" 'BEGIN {
+        active_gb = ab * 0.5
+        avail_ram = ram - 4; if (avail_ram < 2) avail_ram = 2
+        if (sz <= vram - 0.5) {
+            if (active_gb <= 1) print 60; else
+            if (active_gb <= 2) print 40; else
+            if (active_gb <= 4) print 22; else
+            if (active_gb <= 8) print 14; else print 8
+            exit
+        }
+        if (sz <= avail_ram) {
+            if (active_gb <= 1)  print 25; else
+            if (active_gb <= 3)  print 15; else
+            if (active_gb <= 6)  print 8;  else
+            if (active_gb <= 10) print 4;  else print 2
+            exit
+        }
+        cache = avail_ram / sz; if (cache > 0.95) cache = 0.95
+        if (active_gb <= 1.5) { v = 7 + 8*cache; if (v < 2) v = 2; printf "%d\n", v; exit }
+        if (active_gb <= 3)   { v = 3 + 4*cache; if (v < 1) v = 1; printf "%d\n", v; exit }
+        if (active_gb <= 6)   { v = 1 + 2*cache; if (v < 1) v = 1; printf "%d\n", v; exit }
+        print 1
+    }'
+}
+
+# Map category to its primary benchmark sort key.
+primary_bench_for_category() {
+    case "$1" in
+        coding)        echo "liveCodeBench" ;;
+        reasoning)     echo "gpqaDiamond" ;;
+        cyber-offense) echo "cyberMetric" ;;
+        cyber-defense) echo "cyberMetric" ;;
+        *)             echo "mmluPro" ;;
+    esac
+}
+
+# Resolve --sort value into a (category, helperSortKey) pair.
+# echoes "<category>|<sortKey>|<sortLabel>"
+resolve_sort_for_helper() {
+    local sortVal="$1" category="$2"
+    case "$sortVal" in
+        newest)        echo "$category|releaseDate|newest first" ;;
+        popular)       echo "$category|huggingfaceLikes|HuggingFace likes (run scripts/refresh-catalog.py first)" ;;
+        downloaded)    echo "$category|huggingfaceDownloads|HuggingFace downloads (run scripts/refresh-catalog.py first)" ;;
+        coding)        echo "coding|liveCodeBench|LiveCodeBench (higher = better)" ;;
+        general)       echo "general|mmluPro|MMLU-Pro (higher = better)" ;;
+        reasoning)     echo "reasoning|gpqaDiamond|GPQA Diamond (higher = better)" ;;
+        cyber-offense) echo "cyber-offense|cyberMetric|CyberMetric (higher = better)" ;;
+        cyber-defense) echo "cyber-defense|cyberMetric|CyberMetric (higher = better)" ;;
+        ""|*)
+            local pb; pb=$(primary_bench_for_category "$category")
+            echo "$category|$pb|$pb (higher = better)" ;;
+    esac
+}
+
+# Show category counts pulled from catalog. Sets CAT_COUNTS map (associative).
+declare -A CAT_COUNTS
+load_category_counts() {
+    CAT_COUNTS=()
+    while IFS='|' read -r cat count; do
+        [[ -n "$cat" ]] && CAT_COUNTS["$cat"]="$count"
+    done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON" --counts)
+}
+
+# Show entries — input via stdin (lines from helper).
+# Args: ramGiB vramGiB sortLabel
+show_entries() {
+    local ramGiB=$1 vramGiB=$2 sortLabel="$3"
     echo
-    echo "Abliterated MoE catalog filtered by your RAM = $ramGiBVal GiB:"
-    echo "  [ok] fits in RAM cache  [~] tight, works but slow  [!] needs more RAM"
+    echo "Models (sorted by: $sortLabel, RAM=${ramGiB} GiB, VRAM=${vramGiB} GiB):"
+    echo "  [ok] fits cleanly  [~] tight (NVMe streaming)  [!] needs more RAM"
+    echo "  benchmarks are full-precision base; quants take a small hit"
     echo
     local i=0
-    for entry in "${CATALOG[@]}"; do
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+        [[ -z "$id" ]] && continue
         i=$((i+1))
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
-        score_model "$minram" "$ramGiBVal" && marker="[ok]" || {
-            local rc=$?
-            if (( rc == 1 )); then marker="[~] "; else marker="[!] "; fi
-        }
-        printf "  [%2d] %s %s\n" "$i" "$marker" "$name"
-        printf "        %s (needs %s+ GiB RAM)\n" "$tag" "$minram"
+        local marker; marker=$(mark_for_ram "$minRam" "$ramGiB")
+        local tps; tps=$(estimate_tok_sec "$sizeGiB" "$activeB" "$ramGiB" "$vramGiB")
+        printf "  [%2d] %s ~%3s t/s  [%-13s] %s\n" "$i" "$marker" "$tps" "$cat" "$name"
+        local bench=""
+        bench+="LCB:${lcb:--} MMLU:${mmlu:--} GPQA:${gpqa:--}"
+        [[ -n "$cyb" ]] && bench+=" cyber:$cyb"
+        [[ -n "$rdate" ]] && bench+="  rel:$rdate"
+        printf "         %s\n" "$bench"
+        [[ -n "$good" ]] && printf "         + %s\n" "$good"
+        [[ -n "$bad"  ]] && printf "         - %s\n" "$bad"
     done
     echo
 }
 
-# Sets globals: SEL_FILE, SEL_REPO, SEL_PATTERN, SEL_NAME, SEL_MIN_RAM
+# Interactive picker. Sets SEL_FILE/SEL_REPO/SEL_PATTERN/SEL_NAME/SEL_MIN_RAM/SEL_ID.
+# Args: ramGiB vramGiB [preselectedSort]
 select_from_catalog() {
-    show_catalog "$RAM_GIB"
+    local ramGiB="$1" vramGiB="$2" preselSort="${3:-}"
+
+    # Step 1: pick category
+    load_category_counts
+    local cats=("coding" "general" "reasoning" "cyber-offense" "cyber-defense")
+    echo
+    echo "Use case (filters the list):"
+    local i=0
+    for c in "${cats[@]}"; do
+        i=$((i+1))
+        printf "  [%d] %-15s (%s models)\n" "$i" "$c" "${CAT_COUNTS[$c]:-0}"
+    done
+    i=$((i+1))
+    printf "  [%d] %-15s (%s models)\n" "$i" "all" "${CAT_COUNTS[all]:-0}"
+    echo "  [q] quit"
+    local category=""
     while true; do
-        read -r -p "Pick a number 1-${#CATALOG[@]} (or 'q' to quit): " sel
+        read -r -p "Pick: " sel
         if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
-        if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#CATALOG[@]} )); then
-            IFS='|' read -r id name repo file pattern size minram tag <<< "${CATALOG[$((sel-1))]}"
+        if [[ "$sel" =~ ^[0-9]+$ ]]; then
+            if (( sel >= 1 && sel <= ${#cats[@]} )); then category="${cats[$((sel-1))]}"; break; fi
+            if (( sel == ${#cats[@]} + 1 )); then category="all"; break; fi
+        fi
+        echo "Invalid. Number or q."
+    done
+
+    # Step 2: pick sort (skip if preselSort given)
+    local sortVal="$preselSort"
+    if [[ -z "$sortVal" ]]; then
+        local pb; pb=$(primary_bench_for_category "$category")
+        echo
+        echo "Sort by:"
+        echo "  [1] performance ($pb, default)"
+        echo "  [2] newest first"
+        echo "  [3] most popular   (HF likes - run scripts/refresh-catalog.py first)"
+        echo "  [4] most downloaded (HF downloads - run scripts/refresh-catalog.py first)"
+        echo "  [5] back"
+        while true; do
+            read -r -p "Pick (1-5): " s
+            case "$s" in
+                ""|1) sortVal="$category"; break ;;
+                2) sortVal="newest"; break ;;
+                3) sortVal="popular"; break ;;
+                4) sortVal="downloaded"; break ;;
+                5|b|B) return 2 ;;  # signal: back to category
+                *) echo "Invalid. 1-5." ;;
+            esac
+        done
+    fi
+
+    # Step 3: filter+sort+show
+    local resolved; resolved=$(resolve_sort_for_helper "$sortVal" "$category")
+    local helperCat="${resolved%%|*}"
+    local rest="${resolved#*|}"
+    local helperSort="${rest%%|*}"
+    local sortLabel="${rest#*|}"
+
+    local helperArgs=("--catalog" "$CATALOG_JSON" "--sort" "$helperSort")
+    [[ "$helperCat" != "all" ]] && helperArgs+=("--category" "$helperCat")
+
+    local entries=()
+    while IFS= read -r line; do entries+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
+
+    if (( ${#entries[@]} == 0 )); then
+        echo "No models match. Bad sort?"
+        return 1
+    fi
+
+    printf '%s\n' "${entries[@]}" | show_entries "$ramGiB" "$vramGiB" "$sortLabel"
+
+    while true; do
+        read -r -p "Pick a number 1-${#entries[@]} ('b' back, 'q' quit): " sel
+        if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
+        if [[ "$sel" =~ ^[Bb]$ ]]; then
+            select_from_catalog "$ramGiB" "$vramGiB" "$preselSort"
+            return $?
+        fi
+        if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#entries[@]} )); then
+            IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl <<< "${entries[$((sel-1))]}"
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
-            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
+            SEL_NAME="$name"; SEL_MIN_RAM="$minRam"; SEL_ID="$id"
             return 0
         fi
-        echo "Invalid. Pick 1-${#CATALOG[@]} or q."
+        echo "Invalid."
     done
 }
 
-# Populates LOCAL_MODELS array with "<idx>|<file>|<gib>|<name>|<repo>|<pattern>|<minram>" for each catalog entry on disk
+# Populate LOCAL_MODELS with on-disk catalog entries.
+# Each line: file|gib|name|repo|pattern|minram|id
 list_local_models() {
     LOCAL_MODELS=()
-    for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
-        if [[ -f "$HERE/$file" ]]; then
-            local bytes
-            bytes=$(stat -f%z "$HERE/$file" 2>/dev/null || stat -c%s "$HERE/$file")
-            local gib
-            gib=$(awk "BEGIN{printf \"%.1f\", $bytes/1024/1024/1024}")
-            LOCAL_MODELS+=("$file|$gib|$name|$repo|$pattern|$minram")
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
+        [[ -z "$id" || -z "$file" ]] && continue
+        local fullpath="$HERE/$file"
+        # Sharded models live in a subdirectory; check if any matching files exist.
+        if [[ "$file" == */* ]]; then
+            local parent; parent=$(dirname "$fullpath")
+            [[ -d "$parent" ]] || continue
+            shopt -s nullglob
+            local matches=("$parent"/*.gguf*)
+            shopt -u nullglob
+            (( ${#matches[@]} == 0 )) && continue
+        else
+            [[ -f "$fullpath" ]] || continue
         fi
-    done
+        local bytes
+        bytes=$(stat -f%z "$fullpath" 2>/dev/null || stat -c%s "$fullpath" 2>/dev/null || echo 0)
+        local gib
+        gib=$(awk "BEGIN{printf \"%.1f\", $bytes/1024/1024/1024}")
+        LOCAL_MODELS+=("$file|$gib|$name|$repo|$pattern|$minRam|$id")
+    done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON")
 }
 
 stop_llama_server() {
@@ -181,7 +323,9 @@ remove_local_model() {
 
 # Interactive manage menu when models are already on disk.
 # Sets SEL_* on success, returns 1 if user aborted.
+# Args: ramGiB vramGiB [preselectedSort]
 manage_local_models() {
+    local ramGiB="$1" vramGiB="$2" preselSort="${3:-}"
     list_local_models
     while (( ${#LOCAL_MODELS[@]} > 0 )); do
         echo
@@ -189,7 +333,7 @@ manage_local_models() {
         local i=0
         for entry in "${LOCAL_MODELS[@]}"; do
             i=$((i+1))
-            IFS='|' read -r file gib name repo pattern minram <<< "$entry"
+            IFS='|' read -r file gib name repo pattern minram id <<< "$entry"
             printf "  [%d] %s  (%s GiB)\n" "$i" "$name" "$gib"
             printf "        %s\n" "$file"
         done
@@ -204,16 +348,16 @@ manage_local_models() {
         if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
 
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#LOCAL_MODELS[@]} )); then
-            IFS='|' read -r file gib name repo pattern minram <<< "${LOCAL_MODELS[$((sel-1))]}"
+            IFS='|' read -r file gib name repo pattern minram id <<< "${LOCAL_MODELS[$((sel-1))]}"
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
-            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
+            SEL_NAME="$name"; SEL_MIN_RAM="$minram"; SEL_ID="$id"
             return 0
         fi
 
         if [[ "$sel" =~ ^[Dd][[:space:]]*([0-9]+)$ ]]; then
             local n=${BASH_REMATCH[1]}
             if (( n >= 1 && n <= ${#LOCAL_MODELS[@]} )); then
-                IFS='|' read -r file gib name repo pattern minram <<< "${LOCAL_MODELS[$((n-1))]}"
+                IFS='|' read -r file gib name repo pattern minram id <<< "${LOCAL_MODELS[$((n-1))]}"
                 echo "Deleting $name ($gib GiB)..."
                 remove_local_model "$file"
                 list_local_models
@@ -224,37 +368,36 @@ manage_local_models() {
         fi
 
         if [[ "$sel" =~ ^[Nn]$ ]]; then
-            select_from_catalog
+            select_from_catalog "$ramGiB" "$vramGiB" "$preselSort"
             return $?
         fi
 
         if [[ "$sel" =~ ^[Aa]$ ]]; then
             echo "Deleting all on-disk catalog models..."
             for entry in "${LOCAL_MODELS[@]}"; do
-                IFS='|' read -r file gib name repo pattern minram <<< "$entry"
+                IFS='|' read -r file gib name repo pattern minram id <<< "$entry"
                 remove_local_model "$file"
             done
-            select_from_catalog
+            select_from_catalog "$ramGiB" "$vramGiB" "$preselSort"
             return $?
         fi
 
         echo "Invalid. Pick 1-${#LOCAL_MODELS[@]}, 'd N', 'n', 'a', or 'q'."
     done
     # All deleted by interactive deletes
-    select_from_catalog
+    select_from_catalog "$ramGiB" "$vramGiB" "$preselSort"
     return $?
 }
 
 # Legacy quick-find: returns 0 if any catalog model is on disk, sets SEL_*
 find_local_model() {
-    for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
-        if [[ -f "$HERE/$file" ]]; then
-            SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
-            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
-            return 0
-        fi
-    done
+    list_local_models
+    if (( ${#LOCAL_MODELS[@]} > 0 )); then
+        IFS='|' read -r file gib name repo pattern minram id <<< "${LOCAL_MODELS[0]}"
+        SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
+        SEL_NAME="$name"; SEL_MIN_RAM="$minram"; SEL_ID="$id"
+        return 0
+    fi
     return 1
 }
 
@@ -472,32 +615,31 @@ echo
 echo "=== Model ==="
 
 if [[ -n "$MODEL" ]]; then
-    # 2a. --model passed explicitly
+    # 2a. --model passed explicitly: look up by id/file in catalog.json, fall back to custom
     found=0
-    for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+    while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl; do
         if [[ "$file" == "$MODEL" || "$id" == "$MODEL" ]]; then
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
-            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
+            SEL_NAME="$name"; SEL_MIN_RAM="$minRam"; SEL_ID="$id"
             found=1; break
         fi
-    done
+    done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON")
     if (( ! found )); then
         SEL_FILE="$MODEL"; SEL_REPO="$MODEL_REPO"; SEL_PATTERN="$MODEL"
-        SEL_NAME="Custom: $MODEL"; SEL_MIN_RAM=0
+        SEL_NAME="Custom: $MODEL"; SEL_MIN_RAM=0; SEL_ID="custom"
     fi
 elif (( PICK )); then
     # 2b. --pick forces picker
-    if ! select_from_catalog; then echo "Aborted."; exit 0; fi
+    if ! select_from_catalog "$RAM_GIB" "$VRAM_GIB" "$SORT"; then echo "Aborted."; exit 0; fi
 else
     # 2c. Models on disk → manage menu (run/delete/download new). Otherwise show catalog.
     list_local_models
     if (( ${#LOCAL_MODELS[@]} > 0 )); then
-        if ! manage_local_models; then echo "Aborted."; exit 0; fi
+        if ! manage_local_models "$RAM_GIB" "$VRAM_GIB" "$SORT"; then echo "Aborted."; exit 0; fi
     else
         echo "No local model found."
-        echo "Below is a catalog of abliterated MoE models filtered against your detected RAM."
-        if ! select_from_catalog; then echo "Aborted."; exit 0; fi
+        echo "Below is the model catalog filtered against your detected RAM."
+        if ! select_from_catalog "$RAM_GIB" "$VRAM_GIB" "$SORT"; then echo "Aborted."; exit 0; fi
     fi
 fi
 
@@ -512,7 +654,7 @@ if [[ -f "$MODEL_PATH" ]]; then
     SIZE=$(awk "BEGIN {printf \"%.2f\", $(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH")/1024/1024/1024}")
     printf "OK on disk: %s GiB\n" "$SIZE"
 else
-    echo "Not on disk. Downloading from $MODEL_REPO ..."
+    echo "Not on disk. Probing mirrors and downloading from $MODEL_REPO ..."
     [[ -z "$MODEL_REPO" ]] && { echo "no repo for custom model; pass --model-repo"; exit 1; }
     [[ -z "$VENV_PY" ]] && { echo "no python found"; exit 1; }
 
@@ -521,12 +663,19 @@ else
         echo "  Will run with mmap streaming but cold prompts will be very slow."
     fi
 
-    HF_HUB_ENABLE_HF_TRANSFER=1 "$VENV_PY" -c "
+    DOWNLOAD_PY="$HERE/scripts/download.py"
+    if [[ -f "$DOWNLOAD_PY" && "$SEL_ID" != "custom" ]]; then
+        # Use download.py for mirror probing + hf_transfer
+        "$VENV_PY" "$DOWNLOAD_PY" --id "$SEL_ID" --catalog "$CATALOG_JSON" --dest "$HERE"
+    else
+        # Custom model or scripts/ missing: direct snapshot_download
+        HF_HUB_ENABLE_HF_TRANSFER=1 "$VENV_PY" -c "
 from huggingface_hub import snapshot_download
 p = snapshot_download(repo_id='$MODEL_REPO', allow_patterns=['$MODEL_PATTERN'], local_dir='$HERE')
 print('->', p)
 "
-    [[ ! -f "$MODEL_PATH" ]] && { echo "download failed (file $MODEL not present after snapshot)"; exit 1; }
+    fi
+    [[ ! -f "$MODEL_PATH" ]] && { echo "download failed (file $MODEL not present after download)"; exit 1; }
 fi
 
 (( DOWNLOAD_ONLY )) && { echo "Done (--download-only)"; exit 0; }
@@ -716,5 +865,7 @@ echo "  Tools:  http://127.0.0.1:8091      (MCP-as-OpenAPI - fetch/search/wiki/a
 echo
 echo "Useful commands:"
 echo "  Switch model:    ./start.sh --pick"
+echo "  Pick by use:     ./start.sh --pick --sort coding   (or general/reasoning/cyber-offense/cyber-defense/newest/popular/downloaded)"
 echo "  Measure perf:    ./start.sh --benchmark"
+echo "  Refresh stats:   python3 scripts/refresh-catalog.py   (HF likes/downloads, then re-run with --sort popular)"
 echo "  Stop all:        pkill -f 'llama-server|open-webui|mcpo'"
