@@ -20,7 +20,8 @@ param(
     [switch]$Pick,
     [switch]$DownloadOnly,
     [switch]$OnlyLlama,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$Benchmark
 )
 
 # ---------- Curated abliterated model catalog ----------
@@ -28,15 +29,22 @@ param(
 # Pattern is the HF allow_patterns glob for snapshot_download.
 # File is the path to pass to llama-server -m (relative to dir).
 $Catalog = @(
-    [pscustomobject]@{ Id='coder-iq2';    Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)';      Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';            Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';            SizeGiB=21;  MinRamGiB=16; Tag='code, agents (default)';            IsDefault=$true }
-    [pscustomobject]@{ Id='coder-iq3';    Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)';      Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';            Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';            SizeGiB=31;  MinRamGiB=24; Tag='code, better quality' }
-    [pscustomobject]@{ Id='coder-q4';     Name='Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)';        Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';                File='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';             Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';             SizeGiB=48;  MinRamGiB=56; Tag='code, high quality' }
-    [pscustomobject]@{ Id='instruct-iq2'; Name='Qwen3-Next 80B-A3B Instruct Decensored IQ2_XXS (~21 GB)';      Repo='mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF';             File='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';         Pattern='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';         SizeGiB=21;  MinRamGiB=16; Tag='general chat, fast' }
-    [pscustomobject]@{ Id='thinking-iq2';Name='Qwen3-Next 80B-A3B Thinking-Uncensored IQ2_XXS (~21 GB)';       Repo='mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF';        File='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';    Pattern='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';    SizeGiB=21;  MinRamGiB=16; Tag='research, reasoning' }
-    [pscustomobject]@{ Id='qwen36-q4';    Name='Qwen3.6-35B-A3B abliterated UD-Q4_K_XL (~22 GB)';              Repo='unsloth/Qwen3.6-35B-A3B-GGUF';                                            File='Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf';                                Pattern='Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf';                                SizeGiB=22;  MinRamGiB=16; Tag='newer training, smaller (NOT abliterated)' }
-    [pscustomobject]@{ Id='qwen30-coder-q4';Name='Qwen3-Coder-30B-A3B abliterated Q4_K_M (~19 GB)';            Repo='mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF';    File='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf'; Pattern='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf'; SizeGiB=19;  MinRamGiB=16; Tag='smaller code, faster' }
-    [pscustomobject]@{ Id='glm-air';      Name='Huihui GLM-4.5-Air abliterated UD-Q4_K_XL (~63 GB)';           Repo='huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF';                           File='GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf';                        Pattern='*UD-Q4_K_XL*.gguf';                                              SizeGiB=63;  MinRamGiB=72; Tag='best for research, slow (A12B)' }
-    [pscustomobject]@{ Id='qwen35-122b';  Name='Qwen3.5-122B-A10B abliterated Q4_K (sharded ~74 GB)';          Repo='huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF';                     File='Q4_K-GGUF\Q4_K-GGUF-00001-of-00008.gguf';                        Pattern='Q4_K-GGUF/*.gguf';                                               SizeGiB=74;  MinRamGiB=80; Tag='biggest abliterated Qwen' }
+    # ---- 8 GiB RAM tier (tiny, fast) ----
+    [pscustomobject]@{ Id='qwen3-4b';        Name='Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)';      Repo='mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF';        File='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';        Pattern='Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf';        SizeGiB=3;   MinRamGiB=8;  Tag='tiny, fast, 8 GiB-RAM friendly' }
+    # ---- 12-16 GiB RAM tier (small dense) ----
+    [pscustomobject]@{ Id='qwen35-9b';       Name='Qwen3.5-9B abliterated  Q4_K_M (~6 GB)';                  Repo='mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF';                    File='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';                    Pattern='Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf';                    SizeGiB=6;   MinRamGiB=10; Tag='small dense, all-around' }
+    [pscustomobject]@{ Id='qwen30-coder-q4'; Name='Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)';        Repo='mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF';  File='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf';  Pattern='Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf';  SizeGiB=19;  MinRamGiB=12; Tag='code, fast MoE (3B active)' }
+    [pscustomobject]@{ Id='qwen36-35b';      Name='Qwen3.6-35B-A3B abliterated UD-Q4_K_XL (~22 GB)';         Repo='mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF';                  File='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf';                  Pattern='Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf';                  SizeGiB=22;  MinRamGiB=16; Tag='newer training, MoE 3B active' }
+    # ---- 16+ GiB RAM tier (80B-A3B family, NVMe streaming) ----
+    [pscustomobject]@{ Id='coder-80b-iq2';   Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)';   Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';              File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';             Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf';             SizeGiB=21;  MinRamGiB=16; Tag='code, agents (NVMe-streaming)' }
+    [pscustomobject]@{ Id='instruct-80b-iq2';Name='Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)';Repo='mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF';           File='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';          Pattern='Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf';          SizeGiB=21;  MinRamGiB=16; Tag='general chat, NVMe-streaming' }
+    [pscustomobject]@{ Id='thinking-80b-iq2';Name='Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)';Repo='mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF';      File='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';     Pattern='Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf';     SizeGiB=21;  MinRamGiB=16; Tag='research, chain-of-thought' }
+    # ---- 32+ GiB RAM tier ----
+    [pscustomobject]@{ Id='coder-80b-iq3';   Name='Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)';   Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';              File='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';             Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf';             SizeGiB=31;  MinRamGiB=24; Tag='code, better quality' }
+    [pscustomobject]@{ Id='coder-80b-q4';    Name='Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)';    Repo='mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF';              File='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';              Pattern='Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf';              SizeGiB=48;  MinRamGiB=56; Tag='code, high quality' }
+    # ---- 64+ GiB RAM tier ----
+    [pscustomobject]@{ Id='glm-air-106b';    Name='Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)';      Repo='huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF';                         File='GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf';                         Pattern='*UD-Q4_K_XL*.gguf';                                               SizeGiB=63;  MinRamGiB=72; Tag='best for research (12B active)' }
+    [pscustomobject]@{ Id='qwen35-122b';     Name='Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)';     Repo='huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF';                   File='Q4_K-GGUF\Q4_K-GGUF-00001-of-00008.gguf';                         Pattern='Q4_K-GGUF/*.gguf';                                                SizeGiB=74;  MinRamGiB=80; Tag='biggest abliterated Qwen' }
 )
 
 $ErrorActionPreference = "Stop"
@@ -151,41 +159,46 @@ if ($ramSpeed -lt 2400) {
     Write-Host "  TIP: enable DOCP in BIOS to run RAM at its rated speed" -ForegroundColor Yellow
 }
 
-# ---------- 2. Resolve model: explicit -Model > local default > picker ----------
+# ---------- 2. Resolve model: explicit -Model > local-on-disk > picker ----------
 Section "Model"
 
-# Find the catalog default
-$defaultEntry = $Catalog | Where-Object { $_.IsDefault } | Select-Object -First 1
-
-# If user passed -Model explicitly, try to honor it
 $selected = $null
+
+# 2a. -Model passed explicitly: catalog match by id or filename, or custom path
 if ($Model) {
-    # First check catalog by filename
     $selected = $Catalog | Where-Object { $_.File -eq $Model -or $_.Id -eq $Model } | Select-Object -First 1
     if (-not $selected) {
-        # Custom filename not in catalog — synthesize a minimal entry
         $selected = [pscustomobject]@{
-            Id      = 'custom'
-            Name    = "Custom: $Model"
-            Repo    = if ($ModelRepo) { $ModelRepo } else { '' }
-            File    = $Model
-            Pattern = $Model
-            SizeGiB = 0
-            MinRamGiB = 0
-            Tag     = 'user-specified'
+            Id='custom'; Name="Custom: $Model"
+            Repo=$(if ($ModelRepo) { $ModelRepo } else { '' })
+            File=$Model; Pattern=$Model
+            SizeGiB=0; MinRamGiB=0; Tag='user-specified'
         }
     }
 }
 
-# If -Pick was set OR no -Model AND default isn't local, show picker
-if (-not $selected -and ($Pick -or -not (Test-Path (Join-Path $here $defaultEntry.File)))) {
-    Write-Host "No local model found (or -Pick was set). Showing catalog..."
+# 2b. -Pick forces the picker
+if (-not $selected -and $Pick) {
     $selected = Select-Model $ramGiB
     if (-not $selected) { Write-Host "Aborted."; return }
 }
 
-# Fallback to default entry if still nothing
-if (-not $selected) { $selected = $defaultEntry }
+# 2c. No -Model and no -Pick: prefer a catalog model already on disk
+if (-not $selected) {
+    foreach ($m in $Catalog) {
+        $candidatePath = Join-Path $here $m.File
+        if (Test-Path $candidatePath) { $selected = $m; break }
+    }
+}
+
+# 2d. Still nothing? Show the picker — never silently auto-pick the 80B or
+# anything else. Make sure the user sees what fits their hardware.
+if (-not $selected) {
+    Write-Host "No local model found." -ForegroundColor Yellow
+    Write-Host "Below is a catalog of abliterated MoE models filtered against your detected RAM."
+    $selected = Select-Model $ramGiB
+    if (-not $selected) { Write-Host "Aborted."; return }
+}
 
 $Model      = $selected.File
 $modelPath  = Join-Path $here $Model
@@ -374,11 +387,56 @@ if ($mcpoUp) {
     Write-Host "MCPO not installed - skipping" -ForegroundColor Yellow
 }
 
-# ---------- 8. Done ----------
+# ---------- 8. Optional benchmark ----------
+if ($Benchmark) {
+    Section "Benchmark"
+    Write-Host "Waiting for llama-server to be ready..."
+    $deadline = (Get-Date).AddMinutes(5)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $h = Invoke-RestMethod "http://127.0.0.1:8088/health" -TimeoutSec 3 -ErrorAction Stop
+            if ($h.status -eq 'ok') { break }
+        } catch { Start-Sleep 3 }
+    }
+
+    function Send-Bench($prompt, $maxTok) {
+        $body = @{
+            model = "any"
+            messages = @(@{ role='user'; content=$prompt })
+            max_tokens = $maxTok
+            temperature = 0
+            stream = $false
+        } | ConvertTo-Json -Depth 5
+        $t0 = Get-Date
+        $r = Invoke-RestMethod "http://127.0.0.1:8088/v1/chat/completions" `
+            -Method Post -ContentType "application/json" -Body $body -TimeoutSec 600
+        $sec = ((Get-Date) - $t0).TotalSeconds
+        return [pscustomobject]@{
+            Tokens = [int]$r.usage.completion_tokens
+            Wall   = [math]::Round($sec, 1)
+            TokS   = if ($sec -gt 0) { [math]::Round($r.usage.completion_tokens / $sec, 2) } else { 0 }
+        }
+    }
+
+    Write-Host "Cold prompt (warming OS page cache + first inference)..."
+    $cold = Send-Bench "Reply with just: ok" 5
+    Write-Host ("  -> {0} tokens in {1}s = {2} tok/s" -f $cold.Tokens, $cold.Wall, $cold.TokS)
+
+    Write-Host "Warm prompt (count 1 to 30)..."
+    $warm = Send-Bench "Count from 1 to 30 in a single comma-separated line." 120
+    Write-Host ("  -> {0} tokens in {1}s = {2} tok/s" -f $warm.Tokens, $warm.Wall, $warm.TokS)
+
+    Write-Host ""
+    Write-Host ("Result on this machine ({0} GiB RAM, {1} GiB VRAM):" -f $ramGiB, $vramGiB) -ForegroundColor Green
+    Write-Host ("  Cold: {0} tok/s   Warm: {1} tok/s" -f $cold.TokS, $warm.TokS) -ForegroundColor Green
+}
+
+# ---------- 9. Done ----------
 Section "Ready"
 Write-Host "Chat:  http://127.0.0.1:3000  (Open WebUI)"
 Write-Host "API:   http://127.0.0.1:8088/v1  (OpenAI-compatible)"
 Write-Host "Tools: http://127.0.0.1:8091     (MCP-as-OpenAPI)"
 Write-Host ""
-Write-Host "Switch model: .\start.ps1 -Model `"<filename>`" -Force"
-Write-Host "Stop all:     Get-Process llama-server,open-webui,mcpo | Stop-Process -Force"
+Write-Host "Switch model:    .\start.ps1 -Pick"
+Write-Host "Measure perf:    .\start.ps1 -Benchmark"
+Write-Host "Stop all:        Get-Process llama-server,open-webui,mcpo | Stop-Process -Force"

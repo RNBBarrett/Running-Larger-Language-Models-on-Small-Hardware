@@ -19,6 +19,7 @@ DOWNLOAD_ONLY=0
 ONLY_LLAMA=0
 FORCE=0
 PICK=0
+BENCHMARK=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -28,25 +29,33 @@ while [[ $# -gt 0 ]]; do
         --download-only) DOWNLOAD_ONLY=1; shift ;;
         --only-llama)    ONLY_LLAMA=1; shift ;;
         --force)         FORCE=1; shift ;;
+        --benchmark)     BENCHMARK=1; shift ;;
         -h|--help)
-            grep '^#' "$0" | head -15 | sed 's/^# \{0,1\}//'
+            grep '^#' "$0" | head -16 | sed 's/^# \{0,1\}//'
             exit 0 ;;
         *) echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
 
 # ---------- Curated abliterated model catalog ----------
-# Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|tag|isDefault
+# Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|tag
 CATALOG=(
-"coder-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|code, agents (default)|1"
-"coder-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|code, better quality|0"
-"coder-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|code, high quality|0"
-"instruct-iq2|Qwen3-Next 80B-A3B Instruct Decensored IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|general chat, fast|0"
-"thinking-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|research, reasoning|0"
-"qwen36-q4|Qwen3.6-35B-A3B  UD-Q4_K_XL (~22 GB) (NOT abliterated)|unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf|22|16|newer training, smaller|0"
-"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|16|smaller code, faster|0"
-"glm-air|Huihui GLM-4.5-Air abliterated UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|best for research, slow (A12B)|0"
-"qwen35-122b|Qwen3.5-122B-A10B abliterated Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen|0"
+# 8 GiB RAM tier (tiny, fast)
+"qwen3-4b|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny, fast, 8 GiB-RAM friendly"
+# 12-16 GiB RAM tier (small dense + small MoE)
+"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|small dense, all-around"
+"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|code, fast MoE (3B active)"
+"qwen36-35b|Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)|mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|22|16|newer training, MoE 3B active"
+# 16+ GiB RAM tier (80B-A3B family, NVMe streaming)
+"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|code, agents (NVMe-streaming)"
+"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|general chat, NVMe-streaming"
+"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|research, chain-of-thought"
+# 32+ GiB RAM tier
+"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|code, better quality"
+"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|code, high quality"
+# 64+ GiB RAM tier
+"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|best for research (12B active)"
+"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen"
 )
 
 # Returns: 0=ok 1=tight 2=no
@@ -60,13 +69,13 @@ score_model() {
 show_catalog() {
     local ramGiBVal=$1
     echo
-    echo "Available abliterated MoE models (filtered by your RAM = $ramGiBVal GiB):"
+    echo "Abliterated MoE catalog filtered by your RAM = $ramGiBVal GiB:"
     echo "  [ok] fits in RAM cache  [~] tight, works but slow  [!] needs more RAM"
     echo
     local i=0
     for entry in "${CATALOG[@]}"; do
         i=$((i+1))
-        IFS='|' read -r id name repo file pattern size minram tag isdef <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
         score_model "$minram" "$ramGiBVal" && marker="[ok]" || {
             local rc=$?
             if (( rc == 1 )); then marker="[~] "; else marker="[!] "; fi
@@ -84,7 +93,7 @@ select_from_catalog() {
         read -r -p "Pick a number 1-${#CATALOG[@]} (or 'q' to quit): " sel
         if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#CATALOG[@]} )); then
-            IFS='|' read -r id name repo file pattern size minram tag isdef <<< "${CATALOG[$((sel-1))]}"
+            IFS='|' read -r id name repo file pattern size minram tag <<< "${CATALOG[$((sel-1))]}"
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minram"
             return 0
@@ -93,14 +102,18 @@ select_from_catalog() {
     done
 }
 
-# Get default entry
-default_entry() {
+# Find a catalog model that's already on disk (no auto-default — only if user
+# has previously downloaded one). Returns 0 if found, sets SEL_*
+find_local_model() {
     for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag isdef <<< "$entry"
-        if [[ "$isdef" == "1" ]]; then
-            echo "$entry"; return
+        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
+        if [[ -f "$HERE/$file" ]]; then
+            SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
+            SEL_NAME="$name"; SEL_MIN_RAM="$minram"
+            return 0
         fi
     done
+    return 1
 }
 
 # ---------- Platform ----------
@@ -196,19 +209,15 @@ printf "CPU      : %s (%s cores)\n"     "$CPU_NAME" "$CPU_CORES"
 printf "RAM      : %s GiB\n"            "$RAM_GIB"
 printf "Disk /   : %s GiB free\n"       "$DISK_FREE_GIB"
 
-# ---------- 2. Resolve model: explicit --model > local default > picker ----------
+# ---------- 2. Resolve model: --model > local-on-disk > picker (no defaults) ----------
 echo
 echo "=== Model ==="
 
-# Default catalog entry
-IFS='|' read -r DEF_ID DEF_NAME DEF_REPO DEF_FILE DEF_PATTERN DEF_SIZE DEF_MINRAM DEF_TAG DEF_ISDEF <<< "$(default_entry)"
-
-# Resolve selection
 if [[ -n "$MODEL" ]]; then
-    # User passed --model: search catalog for matching file or id
+    # 2a. --model passed explicitly
     found=0
     for entry in "${CATALOG[@]}"; do
-        IFS='|' read -r id name repo file pattern size minram tag isdef <<< "$entry"
+        IFS='|' read -r id name repo file pattern size minram tag <<< "$entry"
         if [[ "$file" == "$MODEL" || "$id" == "$MODEL" ]]; then
             SEL_FILE="$file"; SEL_REPO="$repo"; SEL_PATTERN="$pattern"
             SEL_NAME="$name"; SEL_MIN_RAM="$minram"
@@ -216,16 +225,20 @@ if [[ -n "$MODEL" ]]; then
         fi
     done
     if (( ! found )); then
-        # Custom file not in catalog
         SEL_FILE="$MODEL"; SEL_REPO="$MODEL_REPO"; SEL_PATTERN="$MODEL"
         SEL_NAME="Custom: $MODEL"; SEL_MIN_RAM=0
     fi
-elif (( PICK )) || [[ ! -f "$HERE/$DEF_FILE" ]]; then
-    echo "No local model found (or --pick was set). Showing catalog..."
+elif (( PICK )); then
+    # 2b. --pick forces picker
     if ! select_from_catalog; then echo "Aborted."; exit 0; fi
+elif find_local_model; then
+    # 2c. Use whichever catalog model is already on disk
+    :
 else
-    SEL_FILE="$DEF_FILE"; SEL_REPO="$DEF_REPO"; SEL_PATTERN="$DEF_PATTERN"
-    SEL_NAME="$DEF_NAME"; SEL_MIN_RAM="$DEF_MINRAM"
+    # 2d. Nothing on disk, no --model: always show picker, never auto-pick
+    echo "No local model found."
+    echo "Below is a catalog of abliterated MoE models filtered against your detected RAM."
+    if ! select_from_catalog; then echo "Aborted."; exit 0; fi
 fi
 
 MODEL="$SEL_FILE"
@@ -382,11 +395,48 @@ else
     echo "MCPO not installed - skipping"
 fi
 
-# ---------- 8. Done ----------
+# ---------- 8. Optional benchmark ----------
+if (( BENCHMARK )); then
+    echo
+    echo "=== Benchmark ==="
+    echo "Waiting for llama-server to be ready..."
+    for _ in $(seq 1 60); do
+        if curl -fsS "http://127.0.0.1:8088/health" 2>/dev/null | grep -q '"ok"'; then
+            break
+        fi
+        sleep 3
+    done
+
+    bench_one() {
+        local prompt="$1" maxtok="$2"
+        local body=$(printf '{"model":"any","messages":[{"role":"user","content":%s}],"max_tokens":%s,"temperature":0,"stream":false}' \
+            "\"$prompt\"" "$maxtok")
+        local t0=$(date +%s.%N)
+        local resp=$(curl -sS -X POST "http://127.0.0.1:8088/v1/chat/completions" \
+            -H "Content-Type: application/json" -d "$body")
+        local t1=$(date +%s.%N)
+        local tokens=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['usage']['completion_tokens'])" 2>/dev/null)
+        [[ -z "$tokens" ]] && tokens=0
+        local sec=$(awk "BEGIN{printf \"%.1f\", $t1-$t0}")
+        local toks=$(awk "BEGIN{printf \"%.2f\", $tokens/($t1-$t0)}" 2>/dev/null)
+        echo "  -> $tokens tokens in ${sec}s = ${toks} tok/s"
+    }
+
+    echo "Cold prompt..."
+    bench_one "Reply with just: ok" 5
+    echo "Warm prompt..."
+    bench_one "Count from 1 to 30 in a single comma-separated line." 120
+    echo
+    echo "Result on this machine ($RAM_GIB GiB RAM, $VRAM_GIB GiB VRAM)"
+fi
+
+# ---------- 9. Done ----------
 echo
 echo "=== Ready ==="
 echo "Chat:  http://127.0.0.1:3000"
 echo "API:   http://127.0.0.1:8088/v1"
 echo "Tools: http://127.0.0.1:8091"
 echo
-echo "Stop all: pkill -f 'llama-server|open-webui|mcpo'"
+echo "Switch model:    ./start.sh --pick"
+echo "Measure perf:    ./start.sh --benchmark"
+echo "Stop all:        pkill -f 'llama-server|open-webui|mcpo'"

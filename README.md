@@ -1,43 +1,69 @@
-# Local abliterated LLM stack
+# Running larger language models on small hardware
 
-A self-contained, **fully local**, **abliterated** (uncensored) LLM stack built around `llama.cpp` + Open WebUI + MCP tools. One script auto-detects your hardware, downloads a hardware-appropriate model from a curated catalog, and launches everything.
+A cross-platform script that **figures out what your machine can actually run, presents a curated catalog of abliterated MoE models filtered against your specs, launches the best fit with auto-tuned flags, and measures real-world throughput**. Built on `llama.cpp` + Open WebUI + MCP tools.
 
-Works on **Windows**, **Linux**, and **macOS**.
+Works on **Windows**, **Linux**, and **macOS** — same logic on each.
 
-## What you get
+## The core idea
 
-Out of the box, on the **baseline reference machine** (specs below):
+Most "run an LLM locally" guides hardcode flags for a specific machine and a specific model. They break the moment your hardware isn't theirs. This stack inverts the flow:
 
-- **Qwen3-Coder-Next 80B-A3B abliterated** running at **~13 tok/s warm-cache** in chat
-- A **chat UI** (Open WebUI) at http://127.0.0.1:3000 with persistent history, multi-conversation, and tool toggles
-- **Six free MCP-based tools** wired in for the model to call: web search (DuckDuckGo), URL fetch, Wikipedia, arXiv, time/date, persistent memory
-- **OpenAI-compatible API** at http://127.0.0.1:8088/v1 — drop-in for any local-LLM client
-- **Zero API costs**, zero data leaves the machine, no refusals
+```
+1. Detect       — query VRAM, RAM, CPU, disk
+2. Recommend    — score a curated catalog of abliterated MoE GGUFs
+                  against the detected RAM (`[ok]` / `[~]` / `[!]`)
+3. Choose       — interactive picker, or pass -Model
+4. Auto-tune    — context, KV cache type, batch sizes, expert offload,
+                  --mlock — all derived from detected specs
+5. Launch       — llama-server + Open WebUI + MCPO (6 free tools)
+6. Measure      — `-Benchmark` flag prints actual cold + warm tok/s
+                  on YOUR machine
+```
 
-### Baseline reference machine
+The script encodes years' worth of community knowledge about which `llama.cpp` flags work where, what tradeoffs apply at each VRAM/RAM tier, and which model architectures stream efficiently from NVMe. You don't have to know any of that — run it and the right thing happens.
+
+## What's in the catalog
+
+Eleven abliterated models spanning four hardware tiers. The picker scores each against your detected RAM and shows which will fit comfortably (`[ok]`), which will stream from disk slowly (`[~]`), and which won't run usefully (`[!]`).
+
+| Tier | Min RAM | Models |
+|---|---|---|
+| **Tiny** | 8 GiB | Qwen3-4B-Instruct abliterated |
+| **Small** | 10–16 GiB | Qwen3.5-9B abliterated · Qwen3-Coder-30B-A3B abliterated · Qwen3.6-35B-A3B abliterated |
+| **Medium (NVMe streaming)** | 16+ GiB | Qwen3-Coder-Next 80B-A3B (IQ2) · Qwen3-Next 80B-A3B Instruct (IQ2) · Qwen3-Next 80B-A3B Thinking (IQ2) |
+| **Large** | 24–56 GiB | Qwen3-Coder-Next 80B-A3B (IQ3 / Q4_K_M) |
+| **Frontier** | 64–80 GiB | GLM-4.5-Air abliterated (106B-A12B) · Qwen3.5-122B-A10B abliterated (sharded) |
+
+Pick by use case — coder variants for agentic tool-use, instruct for general chat, thinking for reasoning, GLM-Air for research. The picker shows you the names and tags so you don't need to memorize this table.
+
+## Reference run — proving the loop on a constrained machine
+
+To show the auto-detect → recommend → run → measure loop produces *real numbers* on real hardware, here's what happened end-to-end on a deliberately constrained machine. **These are NOT the headline goal — this is one data point demonstrating the approach works.**
 
 | Component | Spec |
 |---|---|
 | CPU | AMD Ryzen 9 3900X (12 cores / 24 threads) |
-| GPU | AMD Radeon RX 5700 XT (8 GB VRAM, RDNA 1 / gfx1010) |
-| RAM | 16 GB DDR4-3200 (running at 2133 MT/s by default — DOCP off) |
-| Storage | NVMe Gen4 (~7 GB/s sequential reads) |
+| GPU | AMD Radeon RX 5700 XT (8 GB VRAM, **RDNA 1 / gfx1010** — no ROCm on Windows) |
+| RAM | 16 GB DDR4-3200 |
+| Storage | NVMe Gen4 |
 | OS | Windows 11 |
 
-This is a deliberately constrained machine — RDNA 1 has no ROCm support on Windows, and 16 GB RAM is below the model file size. The stack still runs an **80B-parameter MoE model** at usable speed via NVMe expert streaming. Better hardware → better numbers; the script auto-tunes either way.
+Run flow:
+1. Script detected the specs
+2. Picker showed the catalog: 8 GiB-tier and 10-16 GiB-tier models marked `[ok]`, the 80B-A3B-Coder IQ2 marked `[~]` (tight), 32+ GiB models marked `[!]`
+3. Operator chose the 80B-A3B-Coder IQ2 (deliberately picking the tightest viable option to test NVMe streaming)
+4. Script downloaded ~20 GB from HuggingFace, regenerated MCPO config, launched all three services
+5. `-Benchmark` measured:
 
-### Measured throughput on the baseline
-
-| Workload | Result |
+| Metric | Measured |
 |---|---|
-| Single-prompt warm-cache | **~13 tok/s** |
-| Single-prompt cold-cache | ~5–6 tok/s (first prompt, OS warming page cache) |
+| Warm-cache throughput | ~13 tok/s |
+| Cold-cache throughput | ~5–6 tok/s |
 | First-token latency (warm) | ~3 sec |
-| VRAM used during inference | ~6.5–7.4 GB (out of 8) |
-| Context window in use | 8K tokens (262K native, capped by 8 GB VRAM) |
-| Tool-call round-trip | ~10–15 sec end-to-end (search + fetch + answer) |
+| VRAM used during inference | ~6.5–7.4 GB / 8 |
+| Context window | 8K active (262K native, capped by VRAM) |
 
-For comparison, this same machine without the optimizations runs the same model at ~1 tok/s or fails to load it entirely.
+**Your numbers will differ.** A 32 GiB-RAM machine on the same model would land closer to ~18–22 tok/s with `--mlock` enabled. A 64 GiB box with a beefier GPU running GLM-4.5-Air would measure ~6 tok/s on a much smarter 106B model. The point isn't the specific tok/s — it's that **the script shows you what your machine actually does, on whichever model you picked**.
 
 ## Quick start
 
@@ -52,11 +78,13 @@ chmod +x ./start.sh   # one-time
 ./start.sh
 ```
 
-First run shows the model picker (catalog scored against your detected RAM), downloads your chosen model from HuggingFace, and launches the full stack. Subsequent runs skip the picker and just bring services back up.
+**The script never picks a model for you.** First run shows the catalog scored against your detected RAM and asks which one you want. Whichever you pick gets downloaded and launched. Subsequent runs detect the on-disk model and reuse it (use `-Pick` / `--pick` any time to switch).
 
 Once running:
 - **Chat**: http://127.0.0.1:3000
 - **API**: http://127.0.0.1:8088/v1
+
+Add `-Benchmark` (or `--benchmark`) on launch and the script will fire a cold + warm prompt after services come up and **report actual tok/s on your hardware**.
 
 ## Scripts in this repo
 
@@ -73,6 +101,7 @@ Both scripts share the same flag conventions:
 |---|---|---|
 | `-Model "<id\|file>"` | `--model "<id\|file>"` | Use a specific catalog entry (by id) or GGUF filename |
 | `-Pick` | `--pick` | Force the interactive catalog picker |
+| `-Benchmark` | `--benchmark` | After services come up, fire a cold + warm prompt and report tok/s |
 | `-DownloadOnly` | `--download-only` | Fetch the model and exit |
 | `-OnlyLlama` | `--only-llama` | Start only llama-server (skip Open WebUI + MCPO) |
 | `-Force` | `--force` | Stop running instances and relaunch with fresh flags |
@@ -90,7 +119,7 @@ Recommended pairings, in order of how well they handle a slow local model:
 | **Cline** / **Roo Code** (VSCode) | Visual diff approval, in-IDE workflow. Built around Claude-class models so retries can be excessive. | VSCode Marketplace → Cline → settings → custom OpenAI provider |
 | **Continue** (VSCode/JetBrains) | Sidebar chat + autocomplete. Lightweight. | Add `apiBase: http://127.0.0.1:8088/v1` to its config |
 
-The local model used here (`Qwen3-Coder-Next 80B-A3B abliterated`) was specifically post-trained for **agentic tool-use trajectories** — it knows how to read a file, propose an edit, run a test, and iterate. That fine-tune is the difference between "this agent crashes after 3 steps" and "this agent finishes the task."
+If you pick one of the **Coder** entries from the catalog (e.g. `qwen30-coder-q4` or `coder-80b-iq2`), you get a model specifically post-trained for **agentic tool-use trajectories** — it knows how to read a file, propose an edit, run a test, and iterate. That fine-tune is the difference between "this agent crashes after 3 steps" and "this agent finishes the task." The non-coder variants (Instruct, Thinking, GLM-Air) work too but are tuned for different things — pick by use case.
 
 **General principle**: use Open WebUI for chat / research / one-shot answers; reach for a coding agent the moment you want the model to actually edit files in a project.
 
@@ -160,11 +189,11 @@ powershell -ExecutionPolicy Bypass -File start.ps1 -Pick
 Or jump straight to a known catalog ID / filename:
 
 ```powershell
-.\start.ps1 -Model "thinking-iq2"             # by catalog id
-.\start.ps1 -Model "Huihui-...IQ2_XXS.gguf"   # by exact filename
+.\start.ps1 -Model "thinking-80b-iq2"         # by catalog id
+.\start.ps1 -Model "Huihui-...Q4_K_M.gguf"    # by exact filename
 ```
 
-Catalog covers ~9 models from Coder/Instruct/Thinking variants of Qwen3-Next-80B (16 GiB RAM friendly) up through GLM-4.5-Air and Qwen3.5-122B (64+ GiB RAM tier). Auto-downloads from HuggingFace when you pick something not on disk.
+Auto-downloads from HuggingFace when you pick something not on disk.
 
 ## What's running where
 
@@ -206,17 +235,20 @@ In any new chat, click the 🔧 / tool icon near the input box and toggle on:
 - **Time** — date utilities
 - **Memory** — persistent across sessions
 
-The Coder model needs explicit prompting to use them — say "search the web for X" not just "what's X today". The Coder fine-tune doesn't autonomously reach for research tools.
+Coder-tuned models in the catalog (any of the `coder-*` entries) need explicit prompting to use these tools — say "search the web for X" not just "what's X today". Their fine-tune optimizes for code-editing tool loops, not research tool loops. The **Thinking** and **GLM-Air** entries are much better at autonomously reaching for web search.
 
-## What the model is good at
+## Picking the right catalog entry for your use case
 
-`Qwen3-Coder-Next 80B-A3B abliterated` (current default):
-
-- ✅ Code generation, refactoring, debugging
-- ✅ Cybersecurity scripting (uncensored, no refusals)
-- ✅ Tool/agent loops (specifically tuned for this)
-- ✅ Long context (262K native, ~128K practical at 8 GB VRAM)
-- ⚠️ Pure research/synthesis — Coder bias makes it less proactive about web tools. Use the Thinking or Instruct variant from the catalog if research is your main use case.
+| You want to do… | Pick a catalog entry tagged… |
+|---|---|
+| Edit code, run tests, agentic loops | `coder-*` (Coder-tuned for tool-use trajectories) |
+| Single-shot code generation | `coder-*` or any general model |
+| General chat, Q&A, daily driver | `instruct-*` or `qwen35-9b` |
+| Research, multi-source synthesis | `thinking-*` or `glm-air-106b` |
+| Hard reasoning / math / CTF puzzles | `thinking-*` |
+| Cybersecurity scripting (uncensored) | any `coder-*` (abliterated removes refusals) |
+| Long-context document review | `coder-80b-*` or `instruct-80b-iq2` (262K native, hybrid SSM = cheap KV cache) |
+| Lowest-resource fast chat | `qwen3-4b` or `qwen35-9b` |
 
 ## Hardware upgrade path
 
@@ -226,7 +258,7 @@ The stack auto-tunes as your machine evolves:
 |---|---|---|
 | **DOCP / XMP enabled in BIOS** | $0 | RAM at rated 3200 MT/s instead of 2133 → ~25–35% throughput uplift |
 | **64 GB RAM** | ~$100 used | `--mlock` becomes feasible; Q4 quants run cleanly; gpt-oss-120b and Qwen3.5-122B viable; cold-prompt cliff disappears |
-| **GPU swap to Intel Arc Pro B70 32 GB** | ~$800 net | 4× VRAM, native XMX matrix engines, 2.7× memory bandwidth; current model fits entirely on GPU at ~50–70 tok/s |
+| **GPU swap to Intel Arc Pro B70 32 GB** | ~$800 net | 4× VRAM, native XMX matrix engines, 2.7× memory bandwidth; an 80B-A3B model fits entirely on GPU at ~50–70 tok/s |
 
 Run `start.ps1 -Force` (or `--force`) after any hardware change — auto-tune detects and adjusts.
 
