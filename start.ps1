@@ -64,6 +64,80 @@ $dataDir    = if ($env:DATA_DIR)    { $env:DATA_DIR }    else { Join-Path $tools
 
 function Section($t) { Write-Host ""; Write-Host "=== $t ===" -ForegroundColor Cyan }
 
+# ---------- Bootstrap helpers (install llama.cpp + venv on first run) ----------
+
+function Find-Python {
+    foreach ($candidate in @('python3','python','py')) {
+        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($cmd) {
+            $v = (& $cmd.Source --version 2>&1) -replace '^Python ',''
+            if ($v -match '^(\d+)\.(\d+)') {
+                $major = [int]$matches[1]; $minor = [int]$matches[2]
+                if ($major -ge 3 -and $minor -ge 10) { return $cmd.Source }
+            }
+        }
+    }
+    return $null
+}
+
+function Install-LlamaCpp {
+    param([string]$DestDir)
+    Write-Host "Installing llama.cpp Vulkan build to $DestDir ..." -ForegroundColor Cyan
+
+    # Detect architecture so we can pick the right asset (Vulkan x64 covers AMD/NVIDIA/Intel on x64)
+    $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
+    if ($arch -ne 'x64') { throw "Only x64 Windows is supported (yours: $arch)" }
+
+    try {
+        $release = Invoke-RestMethod 'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest' `
+            -Headers @{ 'User-Agent' = 'qwen-stack-bootstrap' } -TimeoutSec 30
+    } catch {
+        throw "Failed to query latest llama.cpp release: $_"
+    }
+
+    $asset = $release.assets | Where-Object { $_.name -match 'bin-win-vulkan-x64\.zip$' } | Select-Object -First 1
+    if (-not $asset) { throw "No Windows Vulkan x64 build found in latest llama.cpp release" }
+
+    $zip = Join-Path $env:TEMP $asset.name
+    $sizeMB = [math]::Round($asset.size / 1MB, 0)
+    Write-Host ("  Downloading {0} ({1} MB)..." -f $asset.name, $sizeMB)
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing
+
+    if (-not (Test-Path $DestDir)) { New-Item -ItemType Directory -Path $DestDir -Force | Out-Null }
+    Write-Host "  Extracting..."
+    Expand-Archive -Path $zip -DestinationPath $DestDir -Force
+    Remove-Item $zip -Force -ErrorAction SilentlyContinue
+    Write-Host "  llama.cpp installed." -ForegroundColor Green
+}
+
+function Install-Venv {
+    param([string]$VenvDir)
+    Write-Host "Creating Python venv + installing packages at $VenvDir ..." -ForegroundColor Cyan
+    Write-Host "  (This pulls Open WebUI + MCP servers, ~1-2 GB. First run takes 5-10 minutes.)" -ForegroundColor Yellow
+
+    $py = Find-Python
+    if (-not $py) {
+        throw "Python 3.10+ not found. Install from https://python.org or run: winget install Python.Python.3.11"
+    }
+
+    & $py -m venv $VenvDir
+    if ($LASTEXITCODE -ne 0) { throw "venv creation failed (exit $LASTEXITCODE)" }
+
+    $venvPython = Join-Path $VenvDir 'Scripts\python.exe'
+    & $venvPython -m pip install --quiet --upgrade pip 2>&1 | Out-Null
+    Write-Host "  Installing open-webui, mcpo, MCP servers, hf-transfer..."
+    & $venvPython -m pip install --quiet `
+        open-webui mcpo `
+        mcp-server-fetch duckduckgo-mcp-server wikipedia-mcp arxiv-mcp-server mcp-server-time `
+        huggingface_hub hf_transfer 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
+    Write-Host "  venv ready." -ForegroundColor Green
+}
+
+function Test-NodeAvailable {
+    return (Get-Command npx -ErrorAction SilentlyContinue) -ne $null
+}
+
 function Get-ModelScore($m, $ramGiBVal) {
     # tight = within 4 GiB of the floor (works via mmap streaming, slow cold)
     # ok    = clearly above the floor (full RAM cache fit)
@@ -100,6 +174,30 @@ function Select-Model($ramGiBVal) {
         }
         Write-Host "Invalid. Pick a number 1-$($Catalog.Count) or q." -ForegroundColor Yellow
     }
+}
+
+# ---------- 0. Bootstrap (install missing dependencies) ----------
+Section "Bootstrap"
+
+if (-not (Test-Path $toolsDir)) { New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null }
+
+if (Test-Path $llama) {
+    Write-Host "llama.cpp     : found ($llama)"
+} else {
+    Install-LlamaCpp (Split-Path -Parent $llama)
+}
+
+if (Test-Path $venvPy) {
+    Write-Host "Python venv   : found ($venvPy)"
+} else {
+    Install-Venv (Split-Path -Parent (Split-Path -Parent $venvPy))
+}
+
+if (Test-NodeAvailable) {
+    Write-Host "Node.js       : found (memory MCP available)"
+} else {
+    Write-Host "Node.js       : not found - memory MCP will be skipped" -ForegroundColor Yellow
+    Write-Host "                Install via: winget install OpenJS.NodeJS  (then re-run)" -ForegroundColor DarkGray
 }
 
 # ---------- 1. Detect hardware ----------

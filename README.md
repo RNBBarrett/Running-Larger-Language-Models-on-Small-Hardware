@@ -139,6 +139,14 @@ Run flow:
 
 ## Quick start
 
+The first run installs everything you need (llama.cpp prebuilt, Python venv with Open WebUI + 6 MCP servers). Pre-flight requirements:
+
+- **Python 3.10+** on PATH (Windows: `winget install Python.Python.3.11` · macOS: built-in or `brew install python` · Linux: `apt install python3 python3-venv`)
+- **Node.js** *(optional, for the memory MCP only)* — Windows: `winget install OpenJS.NodeJS` · macOS: `brew install node` · Linux: `apt install nodejs npm`
+- **~25 GB free disk** for your chosen model + the bootstrap (Open WebUI + MCP server deps are ~1.5 GB)
+
+Then:
+
 **Windows** (Command Prompt or double-click in Explorer):
 ```cmd
 .\start.cmd
@@ -154,6 +162,17 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 chmod +x ./start.sh   # one-time
 ./start.sh
 ```
+
+**On first run**, the script will:
+1. Detect missing pieces and install them:
+   - `llama.cpp` — downloads the appropriate prebuilt from [ggml-org/llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases) (Windows Vulkan x64 / Linux CUDA-or-Vulkan / macOS arm64 or x64)
+   - **Python venv** — creates `~/tools/open-webui-venv/` and pip-installs Open WebUI, MCPO, and the 6 MCP servers (~1–2 GB, ~5–10 min)
+2. Detect your hardware (VRAM, RAM, CPU, disk)
+3. Show the model picker scored against your detected RAM
+4. Download whichever model you choose from HuggingFace
+5. Auto-tune the `llama.cpp` flags and launch the stack
+
+Subsequent runs skip the install steps and just bring services back up.
 
 **The script never picks a model for you.** First run shows the catalog scored against your detected RAM and asks which one you want. Whichever you pick gets downloaded and launched. Subsequent runs detect the on-disk model and reuse it (use `-Pick` / `--pick` any time to switch).
 
@@ -342,27 +361,39 @@ Run `start.ps1 -Force` (or `--force`) after any hardware change — auto-tune de
 
 ## Platform-specific notes
 
-### Linux setup expectations
+### Linux
 
-`start.sh` assumes:
-- llama-server at `~/tools/llama.cpp/llama-server` (or `~/llama.cpp/build/bin/llama-server`, or homebrew, or on PATH)
-- venv at `~/tools/open-webui-venv/` with `pip install open-webui mcpo mcp-server-fetch duckduckgo-mcp-server wikipedia-mcp arxiv-mcp-server mcp-server-time`
-- The GGUF in the same directory as `start.sh` (auto-downloaded if missing)
+The script auto-installs to `~/tools/`:
+- llama.cpp prebuilt — picks the **CUDA build** if `nvidia-smi` is on PATH, otherwise **Vulkan** (works on AMD, Intel Arc, or as CPU fallback)
+- Python venv with Open WebUI + 6 MCP servers
+- MCPO config
 
-VRAM detection tries `nvidia-smi`, then `rocm-smi`, then llama-server's device probe. Works on:
-- NVIDIA (CUDA build of llama.cpp)
-- AMD (ROCm build, or Vulkan)
-- Intel Arc (Vulkan or SYCL build)
+Existing installs are detected first: if `llama-server` is at `~/tools/llama.cpp/`, `~/llama.cpp/build/bin/`, `/opt/homebrew/bin/`, `/usr/local/bin/`, or anywhere on PATH, the script uses it.
 
-### macOS setup expectations
+Distro packages you may need beforehand:
+```bash
+# Debian/Ubuntu
+sudo apt install python3 python3-venv unzip curl
+```
 
-`start.sh` assumes:
-- llama-server at `/opt/homebrew/bin/llama-server` (`brew install llama.cpp`) or built locally
-- The Metal backend is auto-used on Apple Silicon (no flag needed)
-- VRAM = full system RAM on Apple Silicon (unified memory)
-- `--mlock` is auto-enabled on Apple Silicon
+### macOS
 
-For Apple Silicon (M1/M2/M3/M4), the same Qwen3-Coder-Next IQ2_XXS runs at ~25–40 tok/s on 16 GB Macs, ~50+ tok/s on 32 GB Macs.
+The script auto-installs to `~/tools/`:
+- llama.cpp prebuilt — `macos-arm64` for Apple Silicon (Metal-accelerated), `macos-x64` for Intel Macs
+- Python venv with Open WebUI + 6 MCP servers
+
+If you've already done `brew install llama.cpp`, the script detects it at `/opt/homebrew/bin/llama-server` and skips the install.
+
+On Apple Silicon, the script treats unified memory as VRAM and enables `--mlock` automatically. The same Qwen3-Coder-Next IQ2_XXS runs at ~25–40 tok/s on 16 GB Macs, ~50+ tok/s on 32 GB Macs.
+
+### Skipping the auto-install
+
+Set environment variables before running to point at existing installs (avoids any download/install):
+```bash
+export LLAMA_BIN=/path/to/your/llama-server
+export VENV_PYTHON=/path/to/your/python
+./start.sh
+```
 
 ## Override / customize
 

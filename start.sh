@@ -130,6 +130,97 @@ DATA_DIR="${DATA_DIR:-$TOOLS/open-webui-data}"
 MCPO_CFG="${MCPO_CFG:-$TOOLS/mcpo/config.json}"
 MODEL_PATH="$HERE/$MODEL"
 
+# ---------- Bootstrap helpers (install missing pieces on first run) ----------
+
+find_python() {
+    for c in python3 python; do
+        if command -v "$c" >/dev/null 2>&1; then
+            v=$("$c" --version 2>&1 | sed 's/^Python //')
+            major=$(echo "$v" | cut -d. -f1)
+            minor=$(echo "$v" | cut -d. -f2)
+            if [[ "$major" == "3" && "$minor" -ge 10 ]]; then
+                command -v "$c"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+install_llama_cpp() {
+    local dest="$TOOLS/llama.cpp"
+    mkdir -p "$dest"
+
+    # Pick prebuilt asset for this platform
+    local asset_pattern
+    if [[ "$PLATFORM" == "macos" ]]; then
+        if [[ "$(uname -m)" == "arm64" ]]; then
+            asset_pattern='bin-macos-arm64\.zip$'
+        else
+            asset_pattern='bin-macos-x64\.zip$'
+        fi
+    else  # linux
+        # Prefer CUDA build if NVIDIA detected, else Vulkan (works on AMD/Intel/CPU-fallback)
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            asset_pattern='bin-ubuntu-cuda-cu12.*-x64\.zip$'
+        else
+            asset_pattern='bin-ubuntu-vulkan-x64\.zip$'
+        fi
+    fi
+
+    echo "Installing llama.cpp prebuilt to $dest ..."
+    local api='https://api.github.com/repos/ggml-org/llama.cpp/releases/latest'
+    local url
+    url=$(curl -fsSL -A 'qwen-stack-bootstrap' "$api" | grep -E '"browser_download_url".*'"$asset_pattern" | head -1 | sed -E 's/.*"(https[^"]+)".*/\1/')
+    [[ -z "$url" ]] && { echo "  could not find a prebuilt matching $asset_pattern in latest llama.cpp release" >&2; return 1; }
+
+    local zipfile="/tmp/llama-cpp-bootstrap.zip"
+    echo "  Downloading: $(basename "$url")"
+    curl -fL -o "$zipfile" "$url" || { echo "  download failed" >&2; return 1; }
+
+    echo "  Extracting..."
+    if command -v unzip >/dev/null 2>&1; then
+        unzip -q -o "$zipfile" -d "$dest"
+    else
+        echo "  unzip not installed; install with: apt install unzip   (or brew install unzip)" >&2
+        return 1
+    fi
+    rm -f "$zipfile"
+
+    # llama.cpp prebuilds usually nest under build/bin/ — flatten if needed
+    if [[ ! -x "$dest/llama-server" && -x "$dest/build/bin/llama-server" ]]; then
+        ln -sf "$dest/build/bin/llama-server" "$dest/llama-server" 2>/dev/null || true
+    fi
+
+    chmod +x "$dest/llama-server" 2>/dev/null || true
+    echo "  llama.cpp installed."
+}
+
+install_venv() {
+    local venv_dir="$TOOLS/open-webui-venv"
+    echo "Creating Python venv + installing packages at $venv_dir ..."
+    echo "  (Pulls Open WebUI + MCP servers, ~1-2 GB. First run takes 5-10 min.)"
+
+    local py
+    py=$(find_python) || {
+        echo "  Python 3.10+ not found." >&2
+        echo "  Linux:  apt install python3 python3-venv  (or your distro equivalent)" >&2
+        echo "  macOS:  brew install python@3.12         (or download from python.org)" >&2
+        return 1
+    }
+
+    "$py" -m venv "$venv_dir" || { echo "  venv creation failed"; return 1; }
+    local vpy="$venv_dir/bin/python"
+    "$vpy" -m pip install --quiet --upgrade pip >/dev/null
+    echo "  Installing open-webui, mcpo, MCP servers, hf-transfer..."
+    "$vpy" -m pip install --quiet \
+        open-webui mcpo \
+        mcp-server-fetch duckduckgo-mcp-server wikipedia-mcp arxiv-mcp-server mcp-server-time \
+        huggingface_hub hf_transfer \
+        || { echo "  pip install failed"; return 1; }
+    echo "  venv ready."
+}
+
 # Find llama-server binary in common spots
 LLAMA=""
 for candidate in \
@@ -141,19 +232,43 @@ for candidate in \
     "$(command -v llama-server 2>/dev/null || true)"; do
     if [[ -n "$candidate" && -x "$candidate" ]]; then LLAMA="$candidate"; break; fi
 done
-[[ -z "$LLAMA" ]] && { echo "llama-server not found. Install or set TOOLS_DIR." >&2; exit 1; }
+
+# Bootstrap llama.cpp if not found
+if [[ -z "$LLAMA" ]]; then
+    install_llama_cpp || exit 1
+    LLAMA="$TOOLS/llama.cpp/llama-server"
+    [[ ! -x "$LLAMA" ]] && LLAMA="$TOOLS/llama.cpp/build/bin/llama-server"
+    [[ ! -x "$LLAMA" ]] && { echo "llama-server still not found after install" >&2; exit 1; }
+fi
 
 # Find Python venv (for HF downloads + Open WebUI + MCPO)
 VENV_PY=""
 for candidate in \
     "$TOOLS/open-webui-venv/bin/python" \
-    "$HOME/open-webui-venv/bin/python" \
-    "$(command -v python3 2>/dev/null || true)"; do
-    if [[ -n "$candidate" && -x "$candidate" ]]; then VENV_PY="$candidate"; break; fi
+    "$HOME/open-webui-venv/bin/python"; do
+    if [[ -x "$candidate" ]]; then VENV_PY="$candidate"; break; fi
 done
+
+# Bootstrap venv + Open WebUI + MCP servers if not found
+if [[ -z "$VENV_PY" ]]; then
+    install_venv || exit 1
+    VENV_PY="$TOOLS/open-webui-venv/bin/python"
+fi
 
 WEBUI="${WEBUI:-$TOOLS/open-webui-venv/bin/open-webui}"
 MCPO="${MCPO:-$TOOLS/open-webui-venv/bin/mcpo}"
+
+echo
+echo "=== Bootstrap ==="
+echo "llama.cpp     : $LLAMA"
+echo "Python venv   : $VENV_PY"
+if command -v npx >/dev/null 2>&1; then
+    echo "Node.js       : found (memory MCP available)"
+else
+    echo "Node.js       : not found - memory MCP will be skipped"
+    echo "                Linux:  apt install nodejs npm   (or use NodeSource)"
+    echo "                macOS:  brew install node"
+fi
 
 # ---------- 1. Detect hardware ----------
 echo
