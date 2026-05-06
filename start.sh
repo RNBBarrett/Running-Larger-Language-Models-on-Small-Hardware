@@ -117,9 +117,25 @@ list_local_models() {
     done
 }
 
+stop_llama_server() {
+    if pgrep -f llama-server >/dev/null 2>&1; then
+        echo "  stopping llama-server..."
+        pkill -f llama-server 2>/dev/null || true
+        sleep 2
+    fi
+}
+
+# Returns the model id currently loaded by llama-server, or empty if not running.
+get_loaded_model_id() {
+    curl -fsS "http://127.0.0.1:8088/v1/models" 2>/dev/null \
+        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['id'] if d.get('data') else '')" 2>/dev/null
+}
+
 # Delete a local model by file path. For sharded models (file under subdir of
 # $HERE), removes the whole subdir. For single GGUFs, removes just the file.
+# Stops llama-server first since on Windows/some FSes it holds the mmap.
 remove_local_model() {
+    stop_llama_server
     local file="$1"
     local fullpath="$HERE/$file"
     local parent
@@ -539,8 +555,17 @@ mkdir -p "$TOOLS/logs"
 is_listening() { lsof -i :"$1" -sTCP:LISTEN -t 2>/dev/null | head -1; }
 
 if [[ -n "$(is_listening 8088)" ]]; then
-    echo "llama-server already on :8088 (use --force to relaunch)"
-else
+    # Detect model change and restart if needed, otherwise reuse the running instance.
+    LOADED_ID=$(get_loaded_model_id)
+    SELECTED_LEAF=$(basename "$MODEL_PATH")
+    if [[ -n "$LOADED_ID" && "$LOADED_ID" != "$SELECTED_LEAF" && "$LOADED_ID" != "$MODEL_PATH" ]]; then
+        echo "Model change detected: '$LOADED_ID' -> '$SELECTED_LEAF'"
+        stop_llama_server
+    else
+        echo "llama-server already on :8088 with the selected model (use --force to relaunch with fresh flags)"
+    fi
+fi
+if [[ -z "$(is_listening 8088)" ]]; then
     LLAMA_ARGS=(
         -m "$MODEL_PATH"
         -ngl 99

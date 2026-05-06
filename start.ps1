@@ -193,9 +193,33 @@ function Get-LocalModels($baseDir) {
     return ,$found  # comma forces array even with one element
 }
 
+# Stop llama-server if it has the given file mmap'd (or always, when about to
+# replace the model). On Windows, mmap'd files cannot be deleted.
+function Stop-LlamaServer {
+    $procs = Get-Process llama-server -ErrorAction SilentlyContinue
+    if ($procs) {
+        foreach ($p in $procs) {
+            Write-Host ("  stopping llama-server (PID {0})..." -f $p.Id) -ForegroundColor DarkGray
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Seconds 2
+    }
+}
+
+# Returns the model id currently loaded by llama-server, or $null if not running.
+function Get-LoadedModelId {
+    try {
+        $r = Invoke-RestMethod "http://127.0.0.1:8088/v1/models" -TimeoutSec 3 -ErrorAction Stop
+        if ($r.data -and $r.data.Count -gt 0) { return $r.data[0].id }
+    } catch { }
+    return $null
+}
+
 # Remove an on-disk model. For sharded models (file inside subdir), nukes the
 # whole subdir. For single GGUFs in $here, removes just the file.
+# Stops llama-server first since it holds an mmap on the file.
 function Remove-LocalModel($localEntry, $baseDir) {
+    Stop-LlamaServer
     $p = $localEntry.Path
     $parent = Split-Path -Parent $p
     if ($parent -ne $baseDir) {
@@ -479,11 +503,22 @@ if ($Force) {
 # ---------- 5. Launch llama-server ----------
 Section "Launching"
 
-# Skip launching if already up
+# If llama-server is already running, check whether it's serving the same model.
+# If different, restart it so the new model gets loaded — otherwise the user
+# would download a new GGUF only to keep chatting with the old one.
 $llamaUp = Get-NetTCPConnection -LocalPort 8088 -State Listen -ErrorAction SilentlyContinue
 if ($llamaUp) {
-    Write-Host "llama-server already running on :8088 (PID $($llamaUp.OwningProcess)). Use -Force to relaunch."
-} else {
+    $loadedId = Get-LoadedModelId
+    $selectedLeaf = Split-Path -Leaf $modelPath
+    if ($loadedId -and $loadedId -ne $selectedLeaf -and $loadedId -ne $modelPath) {
+        Write-Host ("Model change detected: '{0}' -> '{1}'" -f $loadedId, $selectedLeaf) -ForegroundColor Yellow
+        Stop-LlamaServer
+        $llamaUp = $null  # fall through to launch
+    } else {
+        Write-Host "llama-server already running on :8088 (PID $($llamaUp.OwningProcess)) with the selected model. Use -Force to relaunch with fresh flags."
+    }
+}
+if (-not $llamaUp) {
     $llamaArgs = @(
         "-m", "`"$modelPath`"",
         "-ngl", "99",
