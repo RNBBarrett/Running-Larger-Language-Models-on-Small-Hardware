@@ -40,22 +40,37 @@ done
 # ---------- Curated abliterated model catalog ----------
 # Each line: id|name|repo|file|pattern|sizeGiB|minRamGiB|tag
 CATALOG=(
-# 8 GiB RAM tier (tiny, fast)
-"qwen3-4b|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny, fast, 8 GiB-RAM friendly"
-# 12-16 GiB RAM tier (small dense + small MoE)
-"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|small dense, all-around"
-"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|code, fast MoE (3B active)"
+# ====== TIER 1: Tiny (8 GiB RAM, 2-3 GB on disk) ======
+"qwen3-4b-instruct|Qwen3-4B-Instruct-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + fast, daily chat on weak hw"
+"qwen3-4b-thinking|Qwen3-4B-Thinking-2507 abliterated  Q4_K_M (~3 GB)|mradermacher/Huihui-Qwen3-4B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-4B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|3|8|tiny + reasoning chain-of-thought"
+"llama32-3b|Llama-3.2-3B-Instruct abliterated  Q4_K_M (~2 GB)|mradermacher/Llama-3.2-3B-Instruct-abliterated-i1-GGUF|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.2-3B-Instruct-abliterated.i1-Q4_K_M.gguf|2|6|smallest viable, instruction following"
+
+# ====== TIER 2: Small dense (10-12 GiB RAM, 5-9 GB on disk) ======
+"qwen3-8b|Qwen3-8B abliterated  Q4_K_M (~5 GB)|mradermacher/Huihui-Qwen3-8B-abliterated-v2-i1-GGUF|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-8B-abliterated-v2.i1-Q4_K_M.gguf|5|10|dense 8B, balanced"
+"qwen35-9b|Qwen3.5-9B abliterated  Q4_K_M (~6 GB)|mradermacher/Huihui-Qwen3.5-9B-abliterated-i1-GGUF|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf|6|10|newer dense 9B, all-around"
+"llama31-8b|Llama-3.1-8B-Instruct abliterated  Q4_K_M (~5 GB)|mradermacher/Llama-3.1-8B-Instruct-abliterated-i1-GGUF|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|Llama-3.1-8B-Instruct-abliterated.i1-Q4_K_M.gguf|5|10|Meta lineage, broad knowledge"
+"qwen3-14b|Qwen3-14B abliterated  Q4_K_M (~9 GB)|mradermacher/Huihui-Qwen3-14B-abliterated-v2-i1-GGUF|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|Huihui-Qwen3-14B-abliterated-v2.i1-Q4_K_M.gguf|9|14|dense 14B, more capable than 8B"
+
+# ====== TIER 3: Medium dense (16-24 GiB RAM, 17-20 GB on disk) ======
+"qwen25-coder-32b|Qwen2.5-Coder-32B-Instruct abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen2.5-Coder-32B-Instruct-abliterated-i1-GGUF|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen2.5-Coder-32B-Instruct-abliterated.i1-Q4_K_M.gguf|19|20|dense coder, every weight active"
+"qwen35-27b|Qwen3.5-27B abliterated  Q4_K_M (~17 GB)|mradermacher/Huihui-Qwen3.5-27B-abliterated-i1-GGUF|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3.5-27B-abliterated.i1-Q4_K_M.gguf|17|20|dense 27B, general purpose"
+
+# ====== TIER 4: Small MoE A3B (12-16 GiB RAM, 19-22 GB on disk) - 3B active = fast even when streaming ======
+"qwen30-coder-q4|Qwen3-Coder-30B-A3B abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf|19|12|code MoE, 3B active = fast"
+"qwen3-30b-instruct|Qwen3-30B-A3B-Instruct-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.i1-Q4_K_M.gguf|19|12|general chat MoE, 3B active"
+"qwen3-30b-thinking|Qwen3-30B-A3B-Thinking-2507 abliterated  Q4_K_M (~19 GB)|mradermacher/Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated-i1-GGUF|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-30B-A3B-Thinking-2507-abliterated.i1-Q4_K_M.gguf|19|12|reasoning MoE with chain-of-thought"
 "qwen36-35b|Qwen3.6-35B-A3B abliterated  Q4_K_M (~22 GB)|mradermacher/Huihui-Qwen3.6-35B-A3B-abliterated-GGUF|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf|22|16|newer training, MoE 3B active"
-# 16+ GiB RAM tier (80B-A3B family, NVMe streaming)
-"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|code, agents (NVMe-streaming)"
-"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|general chat, NVMe-streaming"
-"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|research, chain-of-thought"
-# 32+ GiB RAM tier
-"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|code, better quality"
-"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|code, high quality"
-# 64+ GiB RAM tier
-"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|best for research (12B active)"
-"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen"
+
+# ====== TIER 5: 80B-A3B (NVMe-streaming territory, 16+ GiB RAM, 20-50 GB on disk) ======
+"coder-80b-iq2|Qwen3-Coder-Next 80B-A3B abliterated  IQ2_XXS (~21 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ2_XXS.gguf|21|16|80B brain code+agents via NVMe streaming"
+"instruct-80b-iq2|Qwen3-Next 80B-A3B Instruct Decensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Instruct-Decensored-i1-GGUF|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Instruct-Decensored.i1-IQ2_XXS.gguf|21|16|80B general chat via NVMe streaming"
+"thinking-80b-iq2|Qwen3-Next 80B-A3B Thinking-Uncensored  IQ2_XXS (~21 GB)|mradermacher/Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored-i1-GGUF|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|Qwen3-Next-80B-A3B-Thinking-GRPO-Uncensored.i1-IQ2_XXS.gguf|21|16|80B research/reasoning, autonomous tools"
+"coder-80b-iq3|Qwen3-Coder-Next 80B-A3B abliterated  IQ3_XXS (~31 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-IQ3_XXS.gguf|31|24|80B coder higher quality (24+ GiB)"
+"coder-80b-q4|Qwen3-Coder-Next 80B-A3B abliterated  Q4_K_M (~48 GB)|mradermacher/Huihui-Qwen3-Coder-Next-abliterated-i1-GGUF|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|Huihui-Qwen3-Coder-Next-abliterated.i1-Q4_K_M.gguf|48|56|80B coder full Q4 (56+ GiB)"
+
+# ====== TIER 6: 100B+ frontier (64-80 GiB RAM, 60-80 GB on disk) ======
+"glm-air-106b|Huihui GLM-4.5-Air abliterated  UD-Q4_K_XL (~63 GB)|huihui-ai/Huihui-GLM-4.5-Air-abliterated-GGUF|GLM-4.5-Air-abliterated-UD-Q4_K_XL.gguf|*UD-Q4_K_XL*.gguf|63|72|106B-A12B, agentic research benchmark leader"
+"qwen35-122b|Qwen3.5-122B-A10B abliterated  Q4_K (sharded ~74 GB)|huihui-ai/Huihui-Qwen3.5-122B-A10B-abliterated-GGUF|Q4_K-GGUF/Q4_K-GGUF-00001-of-00008.gguf|Q4_K-GGUF/*.gguf|74|80|biggest abliterated Qwen, 122B/A10B"
 )
 
 # Returns: 0=ok 1=tight 2=no
