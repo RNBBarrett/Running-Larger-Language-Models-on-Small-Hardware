@@ -135,6 +135,43 @@ load_category_counts() {
     done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON" --counts)
 }
 
+# Family counts. Sets FAM_NAMES (ordered, most-frequent first) + FAM_COUNTS.
+declare -a FAM_NAMES
+declare -A FAM_COUNTS
+load_family_counts() {
+    FAM_NAMES=()
+    FAM_COUNTS=()
+    while IFS='|' read -r fam count; do
+        [[ -z "$fam" ]] && continue
+        FAM_NAMES+=("$fam")
+        FAM_COUNTS["$fam"]="$count"
+    done < <("$PY_BIN" "$QUERY_HELPER" --catalog "$CATALOG_JSON" --family-counts)
+}
+
+# Interactive family picker. Echoes the selected family on stdout, or returns
+# nonzero on q/back.
+select_family() {
+    load_family_counts
+    echo
+    echo "Pick a model family:"
+    local i=0
+    for f in "${FAM_NAMES[@]}"; do
+        i=$((i+1))
+        printf "  [%2d] %-20s (%s models)\n" "$i" "$f" "${FAM_COUNTS[$f]}"
+    done
+    echo "  [b] back  [q] quit"
+    while true; do
+        read -r -p "Pick: " sel
+        if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
+        if [[ "$sel" =~ ^[Bb]$ ]]; then return 2; fi
+        if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#FAM_NAMES[@]} )); then
+            echo "${FAM_NAMES[$((sel-1))]}"
+            return 0
+        fi
+        echo "Invalid. Number, b, or q." >&2
+    done
+}
+
 # Compute the smartness composite (avg of mmluPro, liveCodeBench, gpqaDiamond) from numeric fields.
 # Echoes integer 0-100, or empty string if no benchmarks present.
 compute_smartness() {
@@ -274,26 +311,40 @@ show_entries() {
 select_from_catalog() {
     local ramGiB="$1" vramGiB="$2" preselSort="${3:-}"
 
-    # Step 1: pick category
-    load_category_counts
-    local cats=("coding" "general" "reasoning" "cyber-offense" "cyber-defense")
-    echo
-    echo "Use case (filters the list):"
-    local i=0
-    for c in "${cats[@]}"; do
-        i=$((i+1))
-        printf "  [%d] %-15s (%s models)\n" "$i" "$c" "${CAT_COUNTS[$c]:-0}"
-    done
-    i=$((i+1))
-    printf "  [%d] %-15s (%s models)\n" "$i" "all" "${CAT_COUNTS[all]:-0}"
-    echo "  [q] quit"
-    local category=""
+    # Step 1: pick a filter (category | family | all)
+    local filterMode="" filterValue="" category=""
     while true; do
+        load_category_counts
+        local cats=("coding" "general" "reasoning" "cyber-offense" "cyber-defense")
+        echo
+        echo "Browse by:"
+        echo "  Use case ---"
+        local i=0
+        for c in "${cats[@]}"; do
+            i=$((i+1))
+            printf "  [%d] %-15s (%s models)\n" "$i" "$c" "${CAT_COUNTS[$c]:-0}"
+        done
+        echo "  Model family ---"
+        i=$((i+1)); local fam_idx=$i
+        printf "  [%d] %-15s (qwen3 / qwen3-next / llama3 / deepseek / ...)\n" "$i" "by family"
+        echo "  All ---"
+        i=$((i+1)); local all_idx=$i
+        printf "  [%d] %-15s (%s models)\n" "$i" "all" "${CAT_COUNTS[all]:-0}"
+        echo "  [q] quit"
         read -r -p "Pick: " sel
         if [[ "$sel" =~ ^[Qq]$ ]]; then return 1; fi
         if [[ "$sel" =~ ^[0-9]+$ ]]; then
-            if (( sel >= 1 && sel <= ${#cats[@]} )); then category="${cats[$((sel-1))]}"; break; fi
-            if (( sel == ${#cats[@]} + 1 )); then category="all"; break; fi
+            if (( sel >= 1 && sel <= ${#cats[@]} )); then
+                filterMode="category"; filterValue="${cats[$((sel-1))]}"; category="$filterValue"; break
+            elif (( sel == fam_idx )); then
+                local fam_pick fam_rc
+                fam_pick=$(select_family); fam_rc=$?
+                if (( fam_rc == 1 )); then return 1; fi  # quit
+                if (( fam_rc == 2 )); then continue; fi  # back to top menu
+                filterMode="family"; filterValue="$fam_pick"; category="general"; break
+            elif (( sel == all_idx )); then
+                filterMode="all"; filterValue=""; category="general"; break
+            fi
         fi
         echo "Invalid. Number or q."
     done
@@ -333,9 +384,16 @@ select_from_catalog() {
     # Other sorts are pushed down to the helper.
     local entries=() warnBanner="" sortLabel="" primaryKey=""
 
+    # Build the filter args once based on filterMode/filterValue.
+    local filterArgs=()
+    case "$filterMode" in
+        category) filterArgs=("--category" "$filterValue") ;;
+        family)   filterArgs=("--family"   "$filterValue") ;;
+        all|*)    filterArgs=() ;;
+    esac
+
     if [[ "$sortVal" == "speed" || "$sortVal" == "smartness" ]]; then
-        local helperArgs=("--catalog" "$CATALOG_JSON")
-        [[ "$category" != "all" ]] && helperArgs+=("--category" "$category")
+        local helperArgs=("--catalog" "$CATALOG_JSON" "${filterArgs[@]}")
         local raw=()
         while IFS= read -r line; do raw+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
 
@@ -363,14 +421,13 @@ select_from_catalog() {
     else
         # Helper-driven sort path. Detect popular/downloaded with no live data.
         local resolved; resolved=$(resolve_sort_for_helper "$sortVal" "$category")
-        local helperCat="${resolved%%|*}"
         local rest="${resolved#*|}"
         local helperSort="${rest%%|*}"
         sortLabel="${rest#*|}"
 
         if [[ "$sortVal" == "popular" || "$sortVal" == "downloaded" ]]; then
-            local field="$helperSort" probeArgs=("--catalog" "$CATALOG_JSON")
-            [[ "$helperCat" != "all" ]] && probeArgs+=("--category" "$helperCat")
+            local field="$helperSort"
+            local probeArgs=("--catalog" "$CATALOG_JSON" "${filterArgs[@]}")
             local hasData=0
             while IFS='|' read -r id name family repo file pattern sizeGiB minRam activeB cat tier rdate good bad mmlu lcb gpqa cyb hflikes hfdl ctx; do
                 local val=""
@@ -391,8 +448,7 @@ select_from_catalog() {
             *) primaryKey="" ;;
         esac
 
-        local helperArgs=("--catalog" "$CATALOG_JSON" "--sort" "$helperSort")
-        [[ "$helperCat" != "all" ]] && helperArgs+=("--category" "$helperCat")
+        local helperArgs=("--catalog" "$CATALOG_JSON" "--sort" "$helperSort" "${filterArgs[@]}")
         while IFS= read -r line; do entries+=("$line"); done < <("$PY_BIN" "$QUERY_HELPER" "${helperArgs[@]}")
     fi
 

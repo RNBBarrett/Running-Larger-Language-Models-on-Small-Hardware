@@ -97,8 +97,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", type=Path, default=here / "catalog.json")
     ap.add_argument("--category", help="filter to one category (or 'all')")
-    ap.add_argument("--sort", help="sort key: liveCodeBench|mmluPro|gpqaDiamond|cyberMetric|releaseDate|huggingfaceLikes|huggingfaceDownloads")
+    ap.add_argument("--family", help="filter to one model family (e.g. qwen3-next, llama3, deepseek)")
+    ap.add_argument("--sort", help="sort key: liveCodeBench|mmluPro|gpqaDiamond|cyberMetric|releaseDate|huggingfaceLikes|huggingfaceDownloads|contextWindow")
     ap.add_argument("--counts", action="store_true", help="emit 'category|count' lines instead of entries")
+    ap.add_argument("--family-counts", action="store_true", help="emit 'family|count' lines instead of entries")
     args = ap.parse_args()
 
     if not args.catalog.exists():
@@ -123,8 +125,20 @@ def main() -> int:
         print(f"all|{len(models)}")
         return 0
 
+    if getattr(args, "family_counts"):
+        fcounts: dict[str, int] = {}
+        for m in models:
+            f = m.get("family") or "unknown"
+            fcounts[f] = fcounts.get(f, 0) + 1
+        # sort by count descending so most-common families surface first
+        for f, n in sorted(fcounts.items(), key=lambda x: -x[1]):
+            print(f"{f}|{n}")
+        return 0
+
     if args.category and args.category != "all":
         models = [m for m in models if m.get("category") == args.category]
+    if args.family and args.family != "all":
+        models = [m for m in models if m.get("family") == args.family]
 
     if args.sort:
         # releaseDate sorts ascending alphabetically; we want newest, so reverse

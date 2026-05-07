@@ -386,37 +386,90 @@ function Get-CategoryCounts($catalog) {
     return $counts
 }
 
-function Select-Category($catalog) {
-    $cats = @('coding','general','reasoning','cyber-offense','cyber-defense')
-    $counts = Get-CategoryCounts $catalog
-    Write-Host ""
-    Write-Host "Use case (filters the list):" -ForegroundColor Cyan
-    $i = 0
-    foreach ($c in $cats) {
-        $i++
-        $n = if ($counts.ContainsKey($c)) { $counts[$c] } else { 0 }
-        Write-Host ("  [{0}] {1,-15} ({2} models)" -f $i, $c, $n)
+function Get-FamilyCounts($catalog) {
+    $counts = @{}
+    foreach ($m in $catalog) {
+        $f = if ($m.family) { $m.family } else { 'unknown' }
+        $counts[$f] = 1 + ($counts[$f] | ForEach-Object { if ($_ -is [int]) { $_ } else { 0 } })
     }
-    $i++
-    Write-Host ("  [{0}] all             ({1} models)" -f $i, $catalog.Count)
-    Write-Host "  [q] quit"
+    return $counts
+}
+
+function Select-Family($catalog) {
+    $counts = Get-FamilyCounts $catalog
+    $families = $counts.Keys | Sort-Object -Property @{Expression={ $counts[$_] }} -Descending
+    Write-Host ""
+    Write-Host "Pick a model family:" -ForegroundColor Cyan
+    $i = 0
+    foreach ($f in $families) {
+        $i++
+        Write-Host ("  [{0,2}] {1,-20} ({2} models)" -f $i, $f, $counts[$f])
+    }
+    Write-Host "  [b] back  [q] quit"
     while ($true) {
+        $sel = Read-Host "Pick"
+        if ($sel -eq 'q' -or $sel -eq 'Q') { return $null }
+        if ($sel -eq 'b' -or $sel -eq 'B') { return 'BACK' }
+        $n = 0
+        if ([int]::TryParse($sel, [ref]$n) -and $n -ge 1 -and $n -le $families.Count) {
+            return $families[$n - 1]
+        }
+        Write-Host "Invalid. Pick a number, b, or q." -ForegroundColor Yellow
+    }
+}
+
+# Returns a hashtable: @{ Mode='category'|'family'|'all'; Value=<name or $null> }
+# or $null on quit.
+function Select-Category($catalog) {
+    while ($true) {
+        $cats = @('coding','general','reasoning','cyber-offense','cyber-defense')
+        $counts = Get-CategoryCounts $catalog
+        Write-Host ""
+        Write-Host "Browse by:" -ForegroundColor Cyan
+        Write-Host "  Use case ---"
+        $i = 0
+        foreach ($c in $cats) {
+            $i++
+            $n = if ($counts.ContainsKey($c)) { $counts[$c] } else { 0 }
+            Write-Host ("  [{0}] {1,-15} ({2} models)" -f $i, $c, $n)
+        }
+        Write-Host "  Model family ---"
+        $i++
+        $famIdx = $i
+        Write-Host ("  [{0}] by family       (qwen3 / qwen3-next / llama3 / deepseek / ...)" -f $i)
+        Write-Host "  All ---"
+        $i++
+        $allIdx = $i
+        Write-Host ("  [{0}] all             ({1} models)" -f $i, $catalog.Count)
+        Write-Host "  [q] quit"
         $sel = Read-Host "Pick"
         if ($sel -eq 'q' -or $sel -eq 'Q') { return $null }
         $n = 0
         if ([int]::TryParse($sel, [ref]$n)) {
-            if ($n -ge 1 -and $n -le $cats.Count) { return $cats[$n - 1] }
-            if ($n -eq $cats.Count + 1)           { return 'all' }
+            if ($n -ge 1 -and $n -le $cats.Count) { return @{ Mode='category'; Value=$cats[$n - 1] } }
+            if ($n -eq $famIdx) {
+                $fam = Select-Family $catalog
+                if (-not $fam) { return $null }
+                if ($fam -eq 'BACK') { continue }
+                return @{ Mode='family'; Value=$fam }
+            }
+            if ($n -eq $allIdx) { return @{ Mode='all'; Value=$null } }
         }
         Write-Host "Invalid. Pick a number or q." -ForegroundColor Yellow
     }
 }
 
-function Select-Sort($category) {
-    $bench = Get-PrimaryBench $category
+function Select-Sort($filter) {
+    # $filter is the hashtable from Select-Category. The "smartest in <X>" label
+    # changes based on whether the user picked a category or a family.
+    $defaultLabel = switch ($filter.Mode) {
+        'category' { "{0} ({1})" -f $filter.Value, (Get-PrimaryBench $filter.Value) }
+        'family'   { "family {0} (MMLU-Pro)" -f $filter.Value }
+        default    { "all (MMLU-Pro)" }
+    }
     Write-Host ""
     Write-Host "Sort by:" -ForegroundColor Cyan
-    Write-Host ("  [1] smartest in {0,-15} ({1}, default)" -f $category, $bench)
+    Write-Host ("  [1] smartest in {0,-30} (default)" -f $defaultLabel)
     Write-Host  "  [2] fastest on this machine    (estimated tok/s, descending)"
     Write-Host  "  [3] smartest overall           (composite of MMLU-Pro + LCB + GPQA)"
     Write-Host  "  [4] biggest context window     (longest native context, descending)"
@@ -428,8 +481,12 @@ function Select-Sort($category) {
         $sel = Read-Host "Pick (1-8)"
         if ($sel -eq '8' -or $sel -eq 'b' -or $sel -eq 'B') { return $null }
         switch ($sel) {
-            '1' { return $category }
-            ''  { return $category }
+            '1' {
+                if ($filter.Mode -eq 'category') { return $filter.Value } else { return 'general' }
+            }
+            ''  {
+                if ($filter.Mode -eq 'category') { return $filter.Value } else { return 'general' }
+            }
             '2' { return 'speed' }
             '3' { return 'smartness' }
             '4' { return 'context' }
@@ -442,20 +499,26 @@ function Select-Sort($category) {
 }
 
 function Select-Model($ramGiBVal, $vramGiBVal, $preselectedSort = "") {
-    # Step 1: pick category
-    $category = Select-Category $Catalog
-    if (-not $category) { return $null }
+    # Step 1: pick a filter (category, family, or all)
+    $filter = Select-Category $Catalog
+    if (-not $filter) { return $null }
 
     # Step 2: pick sort (skip if -Sort was passed and is non-empty)
     if ($preselectedSort) {
         $sortKey = $preselectedSort
     } else {
-        $sortKey = Select-Sort $category
+        $sortKey = Select-Sort $filter
         if (-not $sortKey) { return $null }
     }
 
-    # Step 3: filter + sort + show
-    $entries = if ($category -eq 'all') { $Catalog } else { $Catalog | Where-Object { $_.category -eq $category } }
+    # Step 3: filter by mode, then sort + show
+    $entries = switch ($filter.Mode) {
+        'category' { $Catalog | Where-Object { $_.category -eq $filter.Value } }
+        'family'   { $Catalog | Where-Object { $_.family   -eq $filter.Value } }
+        default    { $Catalog }
+    }
+    # primary-bench star uses the category if we're in category mode, else nothing
+    $category = if ($filter.Mode -eq 'category') { $filter.Value } else { 'general' }
 
     # Detect popular/downloaded with no live data and warn + fall back
     $warnBanner = ""

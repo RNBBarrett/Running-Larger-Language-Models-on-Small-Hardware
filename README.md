@@ -236,6 +236,13 @@ Both scripts share the same flag conventions:
 
 ### Picker fields and sorts
 
+The picker is a two-step flow: **browse-by** filter → **sort**.
+
+**Browse-by options:**
+- **Use case** — coding / general / reasoning / cyber-offense / cyber-defense
+- **Model family** — qwen3 / qwen3-next / llama3 / deepseek / gemma / mistral / phi / hermes / dolphin / granite / command-r / yi / glm / whiterabbitneo / foundation-sec / lily-cyber / zysec / primus / baronllm
+- **All** — full catalog
+
 Each entry in the picker shows: rank badge (`#1 ★ best in <category>`), hardware-fit marker (`[ok]/[~]/[!]`), estimated tok/s on your machine, fit description, **`ctx 128K`** (the model's native context window), release age, four benchmark scores (MMLU-Pro / LiveCodeBench / GPQA Diamond / CyberMetric), a **smartness composite** (avg of MMLU + LCB + GPQA, 0-100), and `GOOD AT` / `WEAK AT` blocks. The `*` marker on a benchmark label indicates the active sort key.
 
 Sort keys:
